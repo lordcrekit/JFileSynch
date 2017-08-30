@@ -12,6 +12,7 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -54,24 +55,16 @@ public class UploadServiceTest {
      */
     int Count;
 
-    /**
-     * The 'file date' that will be returned when asked for an upload.
-     */
-    final AtomicReference<Long> fileDate;
-
-    TestingStrategy(AtomicReference<Long> fileDate) {
-      this.fileDate = fileDate;
-    }
-
     @Override
-    public long upload(File file, URI destination) {
+    public long upload(Path file, URI destination) throws IOException {
       // <editor-fold defaultstate="collapsed" desc="Simulate long upload">
       try {
         Thread.sleep(TimeUnit.SECONDS.toMillis(1));
       } catch (InterruptedException e) {
       }
       // </editor-fold>
-      return fileDate.get();
+      Count++;
+      return Files.readAttributes(file, BasicFileAttributes.class).lastModifiedTime().toMillis();
     }
   }
 
@@ -118,26 +111,43 @@ public class UploadServiceTest {
   }
 
   @Test
-  public void testIgnoredFiles() {
+  public void testIgnoredFiles() throws IOException {
+    System.out.println("\tTest ignored files");
 
+    final Path cacheFile = Files.createTempFile(TEST_DIRECTORY, "", "");
+    final Path uploadFile = Files.createTempFile(TEST_DIRECTORY, ".ignore", "");
+    final TestingStrategy strategy = new TestingStrategy();
+    try (final UploaderCache cache = new UploaderCache(CONTEXT, cacheFile);
+         final UploaderService service = new UploaderService(cache, new TestingRouter(), strategy)) {
+
+      cache.ignore(Pattern.compile(".*\\.ignore.*"));
+
+      service.queueUpload(uploadFile);
+      service.terminate();
+      service.awaitTermination();
+
+      Assert.assertEquals(0, strategy.Count);
+    } finally {
+      Files.delete(cacheFile);
+      Files.delete(uploadFile);
+    }
   }
 
   @Test
-  public void testFrozenFiles()
-      throws IOException {
-
+  public void testFrozenFiles() throws IOException {
     System.out.println("\tTest frozen files");
 
     final Path cacheFile = Files.createTempFile(TEST_DIRECTORY, UploadServiceTest.class.getName(), "");
-    try {
-      final AtomicReference<Long> fileDate = new AtomicReference<Long>(new Long(1));
-      final UploaderCache cache = new UploaderCache(CONTEXT, cacheFile);
-      final TestingStrategy strategy = new TestingStrategy(fileDate);
-      final UploaderService service = new UploaderService(cache, new TestingRouter(), strategy);
-      cache.ignore(Pattern.compile(".*\\.temp" + File.pathSeparator + ".*"));
+    final Path toUpload = Files.createTempFile(TEST_DIRECTORY, ".freeze", "");
 
-      final Path toUpload = Paths.get(TEST_DIRECTORY.toString(), ".temp", "file.txt");
+    final TestingStrategy strategy = new TestingStrategy();
+    try (final UploaderCache cache = new UploaderCache(CONTEXT, cacheFile);
+         final UploaderService service = new UploaderService(cache, new TestingRouter(), strategy)) {
+
+      cache.ignore(Pattern.compile(".*\\.freeze.*"));
       service.queueUpload(toUpload);
+      service.terminate();
+      service.awaitTermination();
 
       Assert.assertEquals(0, strategy.Count);
     } finally {

@@ -1,7 +1,8 @@
 package com.github.lordcrekit;
 
-import java.io.File;
+import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Path;
 
 /**
  * The UploaderStrategy decides how files are uploaded.
@@ -16,5 +17,5 @@ public interface UploaderStrategy {
    * @return The timestamp on the file when it was uploaded, or negative if the
    * file failed to upload.
    */
-  long upload(File file, URI destination);
+  long upload(Path file, URI destination) throws IOException;
 }
