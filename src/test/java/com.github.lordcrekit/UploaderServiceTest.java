@@ -86,7 +86,7 @@ public class UploaderServiceTest {
     final Path uploadPath = Files.createTempFile(TEST_DIRECTORY, "test", ".txt");
     final TestingStrategy strategy = new TestingStrategy();
     try (final UploaderCache cache = new UploaderCache(CONTEXT, cacheFile);
-         final UploaderService service = new UploaderService(cache, new TestingRouter(), strategy)) {
+         final UploaderService service = new UploaderService(CONTEXT, cache, new TestingRouter(), strategy)) {
 
       Files.write(uploadPath, "data".getBytes());
       for (int i = 2; i < 10; i++) {
@@ -116,7 +116,7 @@ public class UploaderServiceTest {
     final Path uploadFile = Files.createTempFile(TEST_DIRECTORY, ".ignore", "");
     final TestingStrategy strategy = new TestingStrategy();
     try (final UploaderCache cache = new UploaderCache(CONTEXT, cacheFile);
-         final UploaderService service = new UploaderService(cache, new TestingRouter(), strategy)) {
+         final UploaderService service = new UploaderService(CONTEXT, cache, new TestingRouter(), strategy)) {
 
       cache.ignore(Pattern.compile(".*\\.ignore.*"));
 
@@ -124,7 +124,11 @@ public class UploaderServiceTest {
 
       service.queueUpload(uploadFile);
       service.terminate();
-      service.awaitTermination();
+      try {
+        service.awaitTermination();
+      } catch (InterruptedException e) {
+        Assert.fail("Oops");
+      }
 
       Assert.assertEquals(0, strategy.Count);
     } finally {
@@ -142,7 +146,7 @@ public class UploaderServiceTest {
 
     final TestingStrategy strategy = new TestingStrategy();
     try (final UploaderCache cache = new UploaderCache(CONTEXT, cacheFile);
-         final UploaderService service = new UploaderService(cache, new TestingRouter(), strategy)) {
+         final UploaderService service = new UploaderService(CONTEXT, cache, new TestingRouter(), strategy)) {
 
       Files.write(toUpload, "data".getBytes());
       Files.setLastModifiedTime(toUpload, FileTime.fromMillis(50));
@@ -154,7 +158,11 @@ public class UploaderServiceTest {
       service.queueUpload(toUpload);
 
       service.terminate();
-      service.awaitTermination();
+      try {
+        service.awaitTermination();
+      } catch (InterruptedException e) {
+        Assert.fail("Oops");
+      }
 
       Assert.assertEquals(1, strategy.Count);
     } finally {

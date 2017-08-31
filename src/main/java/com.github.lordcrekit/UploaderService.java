@@ -26,7 +26,7 @@ public class UploaderService implements Closeable {
     private final ZContext context;
     private final String address;
 
-    final UploaderServiceThread(final ZContext context, final String address) {
+    UploaderServiceThread(final ZContext context, final String address) {
       this.context = context;
       this.address = address;
     }
@@ -161,5 +161,6 @@ public class UploaderService implements Closeable {
       this.awaitTermination();
     } catch (InterruptedException e) {
       throw new IOException("Do not interrupt thread closing UploaderService.", e);
+    }
   }
 }
