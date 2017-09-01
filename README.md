@@ -1,1 +1,1 @@
-# JFileSynch
+# JFileSync
