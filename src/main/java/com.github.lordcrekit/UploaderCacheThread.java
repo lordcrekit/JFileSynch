@@ -1,11 +1,21 @@
 package com.github.lordcrekit;
 
+import org.json.JSONObject;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 
 import java.util.Random;
 
 final class UploaderCacheThread implements Runnable {
+  // update commands
+  static final byte FREEZE_COMMAND = 'f';
+  static final byte IGNORE_COMMAND = 'i';
+  static final byte UPDATE_COMMAND = 'u';
+  static final byte TERMINATE_COMMAND = 't';
+
+  // information request commands
+  static final byte GET_FILE_STATUS = 'g';
+  static final byte GET_CACHE_STATUS = 'c';
 
   static String makeAddress() {
     return "inproc://"
@@ -24,12 +34,31 @@ final class UploaderCacheThread implements Runnable {
 
   @Override
   public void run() {
-    ZMQ.Socket sock = context.createSocket(ZMQ.REP);
+    final ZMQ.Socket sock = context.createSocket(ZMQ.REP);
     try {
-      sock.bind(this.address);
-      while (Thread.interrupted()) {
-        sock.recv();
-        // Do stuff
+      sock.bind(address);
+
+      loop:
+      while (!Thread.interrupted()) {
+        final JSONObject msg = new JSONObject(String.valueOf(sock.recv()));
+        switch (msg.getInt("c")) {
+
+          case FREEZE_COMMAND:
+            break;
+
+          case IGNORE_COMMAND:
+            break;
+
+          case UPDATE_COMMAND:
+            break;
+
+          case TERMINATE_COMMAND:
+            sock.send("d");
+            break loop;
+
+          default:
+            assert false;
+        }
       }
     } finally {
       context.destroySocket(sock);

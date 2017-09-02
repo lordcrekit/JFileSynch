@@ -35,7 +35,7 @@ public class UploaderServiceTest {
   }
 
   @AfterClass
-  public static void tearDown() throws IOException {
+  public static void tearDown() throws IOException, InterruptedException {
     CONTEXT.destroy();
     Files.delete(TEST_DIRECTORY);
   }
@@ -88,6 +88,8 @@ public class UploaderServiceTest {
     try (final UploaderCache cache = new UploaderCache(CONTEXT, cacheFile);
          final UploaderService service = new UploaderService(CONTEXT, cache, new TestingRouter(), strategy)) {
 
+      service.start();
+
       Files.write(uploadPath, "data".getBytes());
       for (int i = 2; i < 10; i++) {
         Files.setLastModifiedTime(uploadPath, FileTime.fromMillis(i * 1000));
@@ -117,6 +119,7 @@ public class UploaderServiceTest {
     final TestingStrategy strategy = new TestingStrategy();
     try (final UploaderCache cache = new UploaderCache(CONTEXT, cacheFile);
          final UploaderService service = new UploaderService(CONTEXT, cache, new TestingRouter(), strategy)) {
+      service.start();
 
       cache.ignore(Pattern.compile(".*\\.ignore.*"));
 
@@ -147,6 +150,8 @@ public class UploaderServiceTest {
     final TestingStrategy strategy = new TestingStrategy();
     try (final UploaderCache cache = new UploaderCache(CONTEXT, cacheFile);
          final UploaderService service = new UploaderService(CONTEXT, cache, new TestingRouter(), strategy)) {
+
+      service.start();
 
       Files.write(toUpload, "data".getBytes());
       Files.setLastModifiedTime(toUpload, FileTime.fromMillis(50));

@@ -16,6 +16,35 @@ import java.util.regex.Pattern;
  */
 public class UploaderCache implements Closeable {
 
+  class FileInfo {
+    /**
+     * If the file should be ignored.
+     */
+    final boolean Ignored;
+
+    /**
+     * The time that the file was frozen at, or <code>-1</code> if it is not frozen.
+     */
+    final long TimeFrozen;
+
+    /**
+     * The timestamp on the file when it was frozen. Will be <code>-1</code> if it was never frozen.
+     */
+    final long TimestampWhenFrozen;
+
+    /**
+     * The last Timestamp of the file when it was last uploaded, or <code>-1</code> if it was never uploaded.
+     */
+    final long TimeUploaded;
+
+    private FileInfo(boolean ignored, long timeFrozen, long timestampWhenFrozen, long timeUploaded) {
+      this.Ignored = ignored;
+      this.TimeFrozen = timeFrozen;
+      this.TimestampWhenFrozen = timestampWhenFrozen;
+      this.TimeUploaded = timeUploaded;
+    }
+  }
+
   private final ZContext context;
   private final Path cacheFile;
 
@@ -61,8 +90,12 @@ public class UploaderCache implements Closeable {
   public void update(Path file, long timestamp) {
   }
 
-  public long getTimestamp(Path file) {
-    return -1;
+  /**
+   * @param p
+   * @return
+   */
+  public UploaderCache.FileInfo getFileInformation(Path p) {
+    return new UploaderCache.FileInfo(false, -1, -1, -1);
   }
 
   @Override

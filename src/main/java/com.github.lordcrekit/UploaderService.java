@@ -1,6 +1,7 @@
 package com.github.lordcrekit;
 
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 
@@ -20,22 +21,6 @@ import java.util.logging.Logger;
  * @author William A. Norman <a href="norman.william.dev@gmail.com/>
  */
 public class UploaderService implements Closeable {
-
-  private final class UploaderServiceThread implements Runnable {
-
-    private final ZContext context;
-    private final String address;
-
-    UploaderServiceThread(final ZContext context, final String address) {
-      this.context = context;
-      this.address = address;
-    }
-
-    @Override
-    public void run() {
-
-    }
-  }
 
   private final ZContext context;
 
@@ -68,7 +53,7 @@ public class UploaderService implements Closeable {
 
   public void start() {
     if (this.thread == null) {
-      this.thread = new Thread(new UploaderServiceThread(this.context, this.address));
+      this.thread = new Thread(new UploaderServiceThread(this.context, this.address, this.cache, this.strategy));
       this.thread.start();
     }
   }
@@ -86,7 +71,7 @@ public class UploaderService implements Closeable {
     try {
       sock.connect(this.address);
       final JSONObject msg = new JSONObject();
-      msg.put("c", 1);
+      msg.put("c", UploaderServiceThread.QUEUE_COMMAND);
       msg.put("f", file.normalize().toString());
       msg.put("d", destination.normalize().toString());
 
@@ -114,7 +99,7 @@ public class UploaderService implements Closeable {
 
       for (URI uri : destinations) {
         final JSONObject msg = new JSONObject();
-        msg.put("c", 1);
+        msg.put("c", UploaderServiceThread.QUEUE_COMMAND);
         msg.put("f", file.normalize().toString());
         msg.put("d", uri.normalize().toString());
 
@@ -134,7 +119,7 @@ public class UploaderService implements Closeable {
     try {
       sock.connect(this.address);
       final JSONObject msg = new JSONObject();
-      msg.put("c", -1);
+      msg.put("c", UploaderServiceThread.TERMINATE_COMMAND);
 
       sock.send(msg.toString());
     } finally {
