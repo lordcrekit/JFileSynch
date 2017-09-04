@@ -36,8 +36,10 @@ public class UploaderServiceTest {
 
   @AfterClass
   public static void tearDown() throws IOException, InterruptedException {
+    System.out.println("Destroying testing context");
     CONTEXT.destroy();
     Files.delete(TEST_DIRECTORY);
+    System.out.println("Testing complete");
   }
 
   class TestingRouter implements UploaderRouter {

@@ -10,6 +10,7 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.logging.Logger;
 
 class UploaderServiceThread implements Runnable {
   final static byte QUEUE_COMMAND = 'q';
@@ -38,7 +39,8 @@ class UploaderServiceThread implements Runnable {
       sock.bind(address);
       loop:
       while (!Thread.interrupted()) {
-        final JSONObject msg = new JSONObject(String.valueOf(sock.recv()));
+        final String msgStr = new String(sock.recv());
+        final JSONObject msg = new JSONObject(msgStr);
         switch (msg.getInt("c")) {
           case QUEUE_COMMAND:
             final Path p = Paths.get(msg.getString("f"));
@@ -94,6 +96,8 @@ class UploaderServiceThread implements Runnable {
       }
     } finally {
       context.destroySocket(sock);
+      Logger.getLogger(UploaderServiceThread.class.getName()).log(
+          UploaderService.SOCKET_LOGGING_LEVEL, "Closing thread socket.");
     }
   }
 }

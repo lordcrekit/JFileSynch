@@ -5,15 +5,20 @@ import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 
 import java.util.Random;
+import java.util.logging.Logger;
 
 final class UploaderCacheThread implements Runnable {
-  // update commands
+
+  // Responses
+  static final byte[] SUCCESS_RESPONSE = new byte[] {'d'};
+
+  // Update commands
   static final byte FREEZE_COMMAND = 'f';
   static final byte IGNORE_COMMAND = 'i';
   static final byte UPDATE_COMMAND = 'u';
   static final byte TERMINATE_COMMAND = 't';
 
-  // information request commands
+  // Information request commands
   static final byte GET_FILE_STATUS = 'g';
   static final byte GET_CACHE_STATUS = 'c';
 
@@ -53,7 +58,8 @@ final class UploaderCacheThread implements Runnable {
             break;
 
           case TERMINATE_COMMAND:
-            sock.send("d");
+            // Note that JeroMQ doesn't need this, but native ZMQ does (?).
+            sock.send(SUCCESS_RESPONSE);
             break loop;
 
           default:
@@ -62,6 +68,8 @@ final class UploaderCacheThread implements Runnable {
       }
     } finally {
       context.destroySocket(sock);
+      Logger.getLogger(UploaderCacheThread.class.getName()).log(
+          UploaderService.SOCKET_LOGGING_LEVEL, "Closed thread socket.");
     }
   }
 

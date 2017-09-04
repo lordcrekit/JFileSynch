@@ -1,6 +1,8 @@
 package com.github.lordcrekit;
 
+import org.json.JSONObject;
 import org.zeromq.ZContext;
+import org.zeromq.ZMQ;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -100,6 +102,20 @@ public class UploaderCache implements Closeable {
 
   @Override
   public void close() throws IOException {
+    final JSONObject msg = new JSONObject();
+    msg.put("c", UploaderCacheThread.TERMINATE_COMMAND);
+    final ZMQ.Socket sock = this.context.createSocket(ZMQ.REQ);
+    try {
+      sock.connect(this.threadAddress);
+    } finally {
+      this.context.destroySocket(sock);
+    }
 
+    try {
+      this.thread.interrupt();
+      this.thread.join();
+    } catch (InterruptedException e) {
+      assert false;
+    }
   }
 }

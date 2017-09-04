@@ -11,6 +11,7 @@ import java.net.URI;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Random;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -21,6 +22,8 @@ import java.util.logging.Logger;
  * @author William A. Norman <a href="norman.william.dev@gmail.com/>
  */
 public class UploaderService implements Closeable {
+
+  final static Level SOCKET_LOGGING_LEVEL = Level.INFO;
 
   private final ZContext context;
 
@@ -73,11 +76,14 @@ public class UploaderService implements Closeable {
       final JSONObject msg = new JSONObject();
       msg.put("c", UploaderServiceThread.QUEUE_COMMAND);
       msg.put("f", file.normalize().toString());
-      msg.put("d", destination.normalize().toString());
+      msg.put("u", destination.normalize().toString());
 
       sock.send(msg.toString());
     } finally {
       context.destroySocket(sock);
+      Logger.getLogger(UploaderService.class.getName()).log(
+          UploaderService.SOCKET_LOGGING_LEVEL,
+          "Closing queueing socket");
     }
   }
 
@@ -101,12 +107,15 @@ public class UploaderService implements Closeable {
         final JSONObject msg = new JSONObject();
         msg.put("c", UploaderServiceThread.QUEUE_COMMAND);
         msg.put("f", file.normalize().toString());
-        msg.put("d", uri.normalize().toString());
+        msg.put("u", uri.normalize().toString());
 
         sock.send(msg.toString());
       }
     } finally {
       context.destroySocket(sock);
+      Logger.getLogger(UploaderService.class.getName()).log(
+          UploaderService.SOCKET_LOGGING_LEVEL,
+          "Closing queuing socket");
     }
   }
 
@@ -124,6 +133,9 @@ public class UploaderService implements Closeable {
       sock.send(msg.toString());
     } finally {
       context.destroySocket(sock);
+      Logger.getLogger(UploaderService.class.getName()).log(
+          UploaderService.SOCKET_LOGGING_LEVEL,
+          "Closing termination socket");
     }
   }
 
@@ -141,8 +153,8 @@ public class UploaderService implements Closeable {
   @Override
   public void close() throws IOException {
     this.terminate();
-    this.thread.interrupt();
     try {
+      this.thread.interrupt();
       this.awaitTermination();
     } catch (InterruptedException e) {
       throw new IOException("Do not interrupt thread closing UploaderService.", e);
