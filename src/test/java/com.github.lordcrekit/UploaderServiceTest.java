@@ -37,9 +37,15 @@ public class UploaderServiceTest {
 
   @AfterClass
   public static void tearDown() throws IOException {
-    System.out.println("Destroying testing context");
-    CONTEXT.destroy();
-    Files.delete(TEST_DIRECTORY);
+    try {
+      Files.delete(TEST_DIRECTORY);
+    } catch (IOException e) {
+      throw e;
+    } finally {
+      System.out.println("Destroying testing context");
+      CONTEXT.destroy();
+    }
+
     System.out.println("Testing complete");
   }
 
@@ -115,11 +121,12 @@ public class UploaderServiceTest {
 
     final Path cacheFile = Files.createTempFile(TEST_DIRECTORY, "", "");
     final Path uploadFile = Files.createTempFile(TEST_DIRECTORY, ".ignore", "");
+
     final TestingStrategy strategy = new TestingStrategy();
     try (final UploaderCache cache = new UploaderCache(CONTEXT, cacheFile);
          final UploaderService service = new UploaderService(CONTEXT, cache, new TestingRouter(), strategy)) {
 
-      //cache.ignore(Pattern.compile(".*\\.ignore.*"));
+      cache.ignore(Pattern.compile(".*\\.ignore.*"));
 
       //Files.write(uploadFile, "data".getBytes());
       //service.queueUpload(uploadFile);
@@ -143,13 +150,12 @@ public class UploaderServiceTest {
     try (final UploaderCache cache = new UploaderCache(CONTEXT, cacheFile);
          final UploaderService service = new UploaderService(CONTEXT, cache, new TestingRouter(), strategy)) {
 
-      Files.write(toUpload, "data".getBytes());
-      Files.setLastModifiedTime(toUpload, FileTime.fromMillis(50));
+      //Files.write(toUpload, "data".getBytes());
+      //Files.setLastModifiedTime(toUpload, FileTime.fromMillis(50));
 
-      //cache.freeze(Pattern.compile(".*\\.freeze.*"), 70);
-      //service.queueUpload(toUpload);
+      cache.freeze(Pattern.compile(".*\\.freeze.*"), 70);
 
-      Files.setLastModifiedTime(toUpload, FileTime.fromMillis(80));
+      //Files.setLastModifiedTime(toUpload, FileTime.fromMillis(80));
       //service.queueUpload(toUpload);
 
     } finally {

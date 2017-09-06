@@ -5,12 +5,11 @@ import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 
 import java.io.IOException;
-import java.nio.channels.ClosedByInterruptException;
+import java.io.Reader;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
-import java.util.regex.Pattern;
 
 final class UploaderCacheThread implements Runnable {
 
@@ -28,37 +27,23 @@ final class UploaderCacheThread implements Runnable {
   static final byte GET_FILE_STATUS = 'g';
   static final byte GET_CACHE_STATUS = 'c';
 
-  static String makeAddress() {
-    return "inproc://"
-        + UploaderCacheThread.class.getName()
-        + Integer.toString(new Random().nextInt(46655)) // Up to 'zzz'
-        + "." + Long.toString(System.currentTimeMillis(), 36);
-  }
-
   /**
    * Because we can't interrupt the thread, this boolean is checked each loop.
    */
-  AtomicBoolean CloseNow = new AtomicBoolean(false);
+  final AtomicBoolean CloseNow = new AtomicBoolean(false);
 
-  // <editor-fold defaultState="collapsed" desc="Communication">
   private final ZContext context;
   private final String address;
-  // </editor-fold>
 
-  // <editor-fold defaultState="collapsed" desc="Cached information">
-  private final Set<Pattern> ignoredPatterns = new HashSet<>();
+  private final Path cacheFile;
 
-  private final Map<Pattern, Long> frozenPatterns = new HashMap<>();
+  UploaderCache.CacheInfo cache;
 
-  /**
-   * The timestamp on a file when it was frozen.
-   */
-  private final Map<Path, Long> timestampsWhenFrozen = new HashMap<>();
-  // </editor-fold>
-
-  UploaderCacheThread(ZContext context, String address) {
+  UploaderCacheThread(final ZContext context, final String address, final Path cacheFile) {
     this.context = context;
     this.address = address;
+
+    this.cacheFile = cacheFile;
   }
 
   @Override
@@ -77,18 +62,30 @@ final class UploaderCacheThread implements Runnable {
         switch (msg.getInt("c")) {
 
           case FREEZE_COMMAND:
-            sock.send(SUCCESS_RESPONSE);
-            write();
+            try {
+              write();
+              sock.send(SUCCESS_RESPONSE);
+            } catch (IOException e) {
+              sock.send(FAILURE_RESPONSE);
+            }
             break;
 
           case IGNORE_COMMAND:
-            sock.send(SUCCESS_RESPONSE);
-            write();
+            try {
+              write();
+              sock.send(SUCCESS_RESPONSE);
+            } catch (IOException e) {
+              sock.send(FAILURE_RESPONSE);
+            }
             break;
 
           case UPDATE_COMMAND:
-            sock.send(SUCCESS_RESPONSE);
-            write();
+            try {
+              write();
+              sock.send(SUCCESS_RESPONSE);
+            } catch (IOException e) {
+              sock.send(FAILURE_RESPONSE);
+            }
             break;
 
           case TERMINATE_COMMAND:
@@ -101,7 +98,9 @@ final class UploaderCacheThread implements Runnable {
             final JSONObject status = new JSONObject();
             status.put("i", isIgnored(path));
             status.put("f", isFrozen(path));
-            status.put("ft", this.timestampsWhenFrozen.containsKey(path) ? this.timestampsWhenFrozen.get(path) : "-1");
+            status.put("ft", this.cache.timestampsWhenFrozen.containsKey(path)
+                ? this.cache.timestampsWhenFrozen.get(path)
+                : "-1");
             status.put("t", 1); //this.timestamps.get(path));
 
             sock.send(status.toString());
@@ -123,17 +122,22 @@ final class UploaderCacheThread implements Runnable {
     }
   }
 
-  private boolean isIgnored(String path) {
+  private boolean isIgnored(final String path) {
     return false;
   }
 
-  private long isFrozen(String path) {
+  private long isFrozen(final String path) {
     return 50;
   }
 
   private final void read() {
+    this.cache = new UploaderCache.CacheInfo();
   }
 
-  private final void write() {
+  private final void write() throws IOException {
+    try (final Reader rdr = Files.newBufferedReader(this.cacheFile)) {
+      final JSONObject store = new JSONObject();
+      this.cache = new UploaderCache.CacheInfo();
+    }
   }
 }

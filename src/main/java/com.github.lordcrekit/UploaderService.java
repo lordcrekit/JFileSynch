@@ -25,6 +25,13 @@ public class UploaderService implements Closeable {
 
   final static Level SOCKET_LOGGING_LEVEL = Level.INFO;
 
+  static String makeAddress(String prefix) {
+    return "inproc://"
+        + prefix
+        + '.' + Integer.toString(new Random().nextInt(46655), 36) // Up to 'zzz'
+        + '.' + Long.toString(System.currentTimeMillis(), 36);
+  }
+
   private final ZContext context;
 
   private final String address;
@@ -45,10 +52,7 @@ public class UploaderService implements Closeable {
 
     this.context = context;
 
-    this.address = "inproc://"
-        + UploaderService.class.getName()
-        + Integer.toString(new Random().nextInt(), 36)
-        + Long.toString(System.currentTimeMillis(), 36);
+    this.address = makeAddress(UploaderServiceThread.class.getSimpleName());
 
     this.cache = cache;
     this.router = router;

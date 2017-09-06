@@ -7,6 +7,10 @@ import org.zeromq.ZMQ;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -18,7 +22,8 @@ import java.util.regex.Pattern;
  */
 public class UploaderCache implements Closeable {
 
-  class FileInfo {
+  static final class FileInfo {
+    // <editor-fold defaultstate="collapsed">
     /**
      * If the file should be ignored.
      */
@@ -45,10 +50,39 @@ public class UploaderCache implements Closeable {
       this.TimestampWhenFrozen = timestampWhenFrozen;
       this.TimeUploaded = timeUploaded;
     }
+    // </editor-fold>
+  }
+
+  static final class CacheInfo {
+    // <editor-fold defaultstate="collapsed">
+    final Set<Pattern> ignoredPatterns;
+
+    final Map<Pattern, Long> frozenPatterns;
+
+    /**
+     * The timestamp on a file when it was frozen.
+     */
+    final Map<Path, Long> timestampsWhenFrozen;
+
+    public CacheInfo() {
+      this.ignoredPatterns = new HashSet<>();
+      this.frozenPatterns = new HashMap<>();
+      this.timestampsWhenFrozen = new HashMap<>();
+    }
+
+    public CacheInfo(JSONObject json) {
+      this.ignoredPatterns = new HashSet<>();
+      this.frozenPatterns = new HashMap<>();
+      this.timestampsWhenFrozen = new HashMap<>();
+    }
+
+    public final JSONObject toJSON() {
+      return new JSONObject();
+    }
+    // </editor-fold>
   }
 
   private final ZContext context;
-  private final Path cacheFile;
 
   private final String threadAddress;
   private final UploaderCacheThread threadService;
@@ -56,10 +90,9 @@ public class UploaderCache implements Closeable {
 
   public UploaderCache(ZContext context, Path cacheFile) {
     this.context = context;
-    this.cacheFile = cacheFile;
 
-    this.threadAddress = UploaderCacheThread.makeAddress();
-    this.threadService = new UploaderCacheThread(context, threadAddress);
+    this.threadAddress = UploaderService.makeAddress(UploaderCacheThread.class.getSimpleName());
+    this.threadService = new UploaderCacheThread(context, threadAddress, cacheFile);
     this.thread = new Thread(this.threadService, UploaderCache.class.getSimpleName());
     this.thread.start();
   }
@@ -159,6 +192,10 @@ public class UploaderCache implements Closeable {
     } finally {
       this.context.destroySocket(sock);
     }
+  }
+
+  public UploaderCache.CacheInfo getCacheInformation() {
+    return new CacheInfo();
   }
 
   @Override
