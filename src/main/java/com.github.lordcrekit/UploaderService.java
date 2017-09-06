@@ -33,7 +33,7 @@ public class UploaderService implements Closeable {
   private final UploaderStrategy strategy;
 
   private final UploaderServiceThread threadService;
-  private Thread thread;
+  private final Thread thread;
 
   /**
    * Create a new UploadService.
@@ -55,13 +55,8 @@ public class UploaderService implements Closeable {
     this.strategy = strategy;
 
     this.threadService = new UploaderServiceThread(this.context, this.address, this.cache, this.strategy);
-  }
-
-  public void start() {
-    if (this.thread == null) {
-      this.thread = new Thread(this.threadService);
-      this.thread.start();
-    }
+    this.thread = new Thread(this.threadService, UploaderService.class.getSimpleName());
+    this.thread.start();
   }
 
   /**
@@ -150,14 +145,15 @@ public class UploaderService implements Closeable {
    *     If the thread awaiting termination is interrupted.
    */
   public void awaitTermination() throws InterruptedException {
-    this.thread.join();
+    if (this.thread != null)
+      this.thread.join();
   }
 
   @Override
   public void close() throws IOException {
-    this.terminate();
     try {
       this.threadService.CloseNow.set(true);
+      this.terminate();
       this.awaitTermination();
     } catch (InterruptedException e) {
       throw new IOException("Do not interrupt thread closing UploaderService.", e);

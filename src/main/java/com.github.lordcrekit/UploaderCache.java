@@ -74,6 +74,19 @@ public class UploaderCache implements Closeable {
    *     certain time.
    */
   public void freeze(Pattern pattern, long timestamp) {
+    final ZMQ.Socket sock = this.context.createSocket(ZMQ.REQ);
+    try {
+      sock.connect(this.threadAddress);
+      final JSONObject msg = new JSONObject();
+      msg.put("c", UploaderCacheThread.FREEZE_COMMAND);
+      msg.put("p", pattern.toString());
+
+      sock.send(msg.toString());
+      final byte[] code = sock.recv();
+      assert code == UploaderCacheThread.SUCCESS_RESPONSE;
+    } finally {
+      this.context.destroySocket(sock);
+    }
   }
 
   /**
@@ -83,6 +96,19 @@ public class UploaderCache implements Closeable {
    *     The pattern to ignore. Any files(resolved) that this pattern matches will not be uploaded.
    */
   public void ignore(Pattern pattern) {
+    final ZMQ.Socket sock = this.context.createSocket(ZMQ.REQ);
+    try {
+      sock.connect(this.threadAddress);
+      final JSONObject msg = new JSONObject();
+      msg.put("c", UploaderCacheThread.IGNORE_COMMAND);
+      msg.put("p", pattern.toString());
+
+      sock.send(msg.toString());
+      final byte[] code = sock.recv();
+      assert code == UploaderCacheThread.SUCCESS_RESPONSE;
+    } finally {
+      this.context.destroySocket(sock);
+    }
   }
 
   /**
@@ -92,6 +118,20 @@ public class UploaderCache implements Closeable {
    * @param timestamp
    */
   public void update(Path file, long timestamp) {
+    final ZMQ.Socket sock = this.context.createSocket(ZMQ.REQ);
+    try {
+      sock.connect(this.threadAddress);
+      final JSONObject msg = new JSONObject();
+      msg.put("c", UploaderCacheThread.UPDATE_COMMAND);
+      msg.put("f", file.normalize().toString());
+      msg.put("t", timestamp);
+
+      sock.send(msg.toString());
+      final byte[] code = sock.recv();
+      assert code == UploaderCacheThread.SUCCESS_RESPONSE;
+    } finally {
+      this.context.destroySocket(sock);
+    }
   }
 
   /**
@@ -99,7 +139,26 @@ public class UploaderCache implements Closeable {
    * @return
    */
   public UploaderCache.FileInfo getFileInformation(Path p) {
-    return new UploaderCache.FileInfo(false, -1, -1, -1);
+    final ZMQ.Socket sock = this.context.createSocket(ZMQ.REQ);
+    try {
+      sock.connect(this.threadAddress);
+      final JSONObject msg = new JSONObject();
+      msg.put("c", UploaderCacheThread.GET_FILE_STATUS);
+      msg.put("f", p.normalize().toString());
+
+      sock.send(msg.toString());
+      final byte[] statusMsg_bytes = sock.recv();
+
+      final JSONObject statusMsg = new JSONObject(new String(statusMsg_bytes));
+      return new UploaderCache.FileInfo(
+          statusMsg.getBoolean("i"),
+          statusMsg.getLong("f"),
+          statusMsg.getLong("ft"),
+          statusMsg.getLong("t"));
+
+    } finally {
+      this.context.destroySocket(sock);
+    }
   }
 
   @Override

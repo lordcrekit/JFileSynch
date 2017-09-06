@@ -6,8 +6,8 @@ import org.zeromq.ZMQ;
 
 import java.io.IOException;
 import java.nio.channels.ClosedByInterruptException;
-import java.util.HashSet;
-import java.util.Random;
+import java.nio.file.Path;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
@@ -16,6 +16,7 @@ final class UploaderCacheThread implements Runnable {
 
   // Responses
   static final byte[] SUCCESS_RESPONSE = new byte[]{'d'};
+  static final byte[] FAILURE_RESPONSE = new byte[]{'f'};
 
   // Update commands
   static final byte FREEZE_COMMAND = 'f';
@@ -39,10 +40,21 @@ final class UploaderCacheThread implements Runnable {
    */
   AtomicBoolean CloseNow = new AtomicBoolean(false);
 
+  // <editor-fold defaultState="collapsed" desc="Communication">
   private final ZContext context;
   private final String address;
+  // </editor-fold>
 
-  private final HashSet<Pattern> ignoredPatterns = new HashSet<>();
+  // <editor-fold defaultState="collapsed" desc="Cached information">
+  private final Set<Pattern> ignoredPatterns = new HashSet<>();
+
+  private final Map<Pattern, Long> frozenPatterns = new HashMap<>();
+
+  /**
+   * The timestamp on a file when it was frozen.
+   */
+  private final Map<Path, Long> timestampsWhenFrozen = new HashMap<>();
+  // </editor-fold>
 
   UploaderCacheThread(ZContext context, String address) {
     this.context = context;
@@ -57,41 +69,66 @@ final class UploaderCacheThread implements Runnable {
 
       final ZMQ.Poller poller = context.createPoller(1);
       sock.bind(address);
-      poller.register(sock);
 
       loop:
       while (!this.CloseNow.get()) {
-        poller.poll();
-        final JSONObject msg = new JSONObject(String.valueOf(sock.recv()));
+        final byte[] msg_bytes = sock.recv();
+        final JSONObject msg = new JSONObject(new String(msg_bytes));
         switch (msg.getInt("c")) {
 
           case FREEZE_COMMAND:
+            sock.send(SUCCESS_RESPONSE);
             write();
             break;
 
           case IGNORE_COMMAND:
+            sock.send(SUCCESS_RESPONSE);
             write();
             break;
 
           case UPDATE_COMMAND:
+            sock.send(SUCCESS_RESPONSE);
             write();
             break;
 
           case TERMINATE_COMMAND:
-            // Note that JeroMQ doesn't need this, but native ZMQ does (?).
             sock.send(SUCCESS_RESPONSE);
             break loop;
 
+          case GET_FILE_STATUS:
+            final String path = msg.getString("f");
+
+            final JSONObject status = new JSONObject();
+            status.put("i", isIgnored(path));
+            status.put("f", isFrozen(path));
+            status.put("ft", this.timestampsWhenFrozen.containsKey(path) ? this.timestampsWhenFrozen.get(path) : "-1");
+            status.put("t", 1); //this.timestamps.get(path));
+
+            sock.send(status.toString());
+            break;
+
+          case GET_CACHE_STATUS:
+            sock.send(SUCCESS_RESPONSE);
+            break;
+
           default:
+            sock.send(FAILURE_RESPONSE);
             assert false;
         }
       }
-    } catch (Exception e) {
     } finally {
-      context.destroySocket(sock);
       Logger.getLogger(UploaderCacheThread.class.getName()).log(
-          UploaderService.SOCKET_LOGGING_LEVEL, "Closed thread socket.");
+          UploaderService.SOCKET_LOGGING_LEVEL, "Closing thread socket.");
+      context.destroySocket(sock);
     }
+  }
+
+  private boolean isIgnored(String path) {
+    return false;
+  }
+
+  private long isFrozen(String path) {
+    return 50;
   }
 
   private final void read() {

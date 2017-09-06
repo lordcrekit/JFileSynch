@@ -14,6 +14,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
 class UploaderServiceThread implements Runnable {
+  final static byte[] SUCCESS_RESPONSE = new byte[]{'d'};
+
   final static byte QUEUE_COMMAND = 'q';
   final static byte TERMINATE_COMMAND = 't';
 
@@ -41,17 +43,14 @@ class UploaderServiceThread implements Runnable {
     try {
       sock.bind(address);
 
-      final ZMQ.Poller poller = context.createPoller(1);
-      poller.register(sock);
-
       loop:
       while (!this.CloseNow.get()) {
-        poller.poll();
         final String msgStr = new String(sock.recv());
         final JSONObject msg = new JSONObject(msgStr);
 
         switch (msg.getInt("c")) {
-          case QUEUE_COMMAND:
+          case QUEUE_COMMAND: {
+            // <editor-fold defaultStat="collapsed" desc="Queue logic">
             final Path p = Paths.get(msg.getString("f"));
             final URI u;
             try {
@@ -95,6 +94,8 @@ class UploaderServiceThread implements Runnable {
               continue;
             }
             break;
+            // </editor-fold>
+          }
 
           case TERMINATE_COMMAND:
             break loop;
@@ -103,6 +104,9 @@ class UploaderServiceThread implements Runnable {
             assert false;
         }
       }
+    } catch (Exception e) {
+      e.printStackTrace();
+      assert false;
     } finally {
       context.destroySocket(sock);
       Logger.getLogger(UploaderServiceThread.class.getName()).log(
