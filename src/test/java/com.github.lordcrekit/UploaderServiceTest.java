@@ -5,6 +5,7 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.zeromq.ZContext;
+import org.zeromq.ZMQ;
 
 import java.io.IOException;
 import java.net.URI;
@@ -29,15 +30,15 @@ public class UploaderServiceTest {
   public static void setUp() throws IOException {
     System.out.println(UploaderServiceTest.class.getName());
 
-    CONTEXT = new ZContext();
+    //CONTEXT = new ZContext();
     TEST_DIRECTORY = Files.createTempDirectory(
         UploaderServiceTest.class.getName());
   }
 
   @AfterClass
-  public static void tearDown() throws IOException, InterruptedException {
+  public static void tearDown() throws IOException {
     System.out.println("Destroying testing context");
-    CONTEXT.destroy();
+    //CONTEXT.destroy();
     Files.delete(TEST_DIRECTORY);
     System.out.println("Testing complete");
   }
@@ -69,7 +70,7 @@ public class UploaderServiceTest {
   }
 
   @Test
-  public void testQueueUpload() {
+  public void testQueueUpload() throws IOException {
   }
 
   /**
