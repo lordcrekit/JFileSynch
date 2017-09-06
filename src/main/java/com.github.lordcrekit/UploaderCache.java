@@ -51,6 +51,7 @@ public class UploaderCache implements Closeable {
   private final Path cacheFile;
 
   private final String threadAddress;
+  private final UploaderCacheThread threadService;
   private final Thread thread;
 
   public UploaderCache(ZContext context, Path cacheFile) {
@@ -58,7 +59,8 @@ public class UploaderCache implements Closeable {
     this.cacheFile = cacheFile;
 
     this.threadAddress = UploaderCacheThread.makeAddress();
-    this.thread = new Thread(new UploaderCacheThread(context, threadAddress));
+    this.threadService = new UploaderCacheThread(context, threadAddress);
+    this.thread = new Thread(this.threadService, UploaderCache.class.getSimpleName());
     this.thread.start();
   }
 
@@ -102,17 +104,21 @@ public class UploaderCache implements Closeable {
 
   @Override
   public void close() throws IOException {
-    final JSONObject msg = new JSONObject();
-    msg.put("c", UploaderCacheThread.TERMINATE_COMMAND);
+
     final ZMQ.Socket sock = this.context.createSocket(ZMQ.REQ);
     try {
       sock.connect(this.threadAddress);
+
+      final JSONObject msg = new JSONObject();
+      msg.put("c", UploaderCacheThread.TERMINATE_COMMAND);
+      sock.send(msg.toString());
+
+      this.threadService.CloseNow.set(true);
     } finally {
       this.context.destroySocket(sock);
     }
 
     try {
-      this.thread.interrupt();
       this.thread.join();
     } catch (InterruptedException e) {
       assert false;

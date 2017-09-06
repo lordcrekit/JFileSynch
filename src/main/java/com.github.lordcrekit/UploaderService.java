@@ -32,6 +32,7 @@ public class UploaderService implements Closeable {
   private final UploaderRouter router;
   private final UploaderStrategy strategy;
 
+  private final UploaderServiceThread threadService;
   private Thread thread;
 
   /**
@@ -52,11 +53,13 @@ public class UploaderService implements Closeable {
     this.cache = cache;
     this.router = router;
     this.strategy = strategy;
+
+    this.threadService = new UploaderServiceThread(this.context, this.address, this.cache, this.strategy);
   }
 
   public void start() {
     if (this.thread == null) {
-      this.thread = new Thread(new UploaderServiceThread(this.context, this.address, this.cache, this.strategy));
+      this.thread = new Thread(this.threadService);
       this.thread.start();
     }
   }
@@ -154,7 +157,7 @@ public class UploaderService implements Closeable {
   public void close() throws IOException {
     this.terminate();
     try {
-      this.thread.interrupt();
+      this.threadService.CloseNow.set(true);
       this.awaitTermination();
     } catch (InterruptedException e) {
       throw new IOException("Do not interrupt thread closing UploaderService.", e);

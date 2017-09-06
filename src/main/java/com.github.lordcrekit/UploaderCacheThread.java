@@ -4,13 +4,18 @@ import org.json.JSONObject;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 
+import java.io.IOException;
+import java.nio.channels.ClosedByInterruptException;
+import java.util.HashSet;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 final class UploaderCacheThread implements Runnable {
 
   // Responses
-  static final byte[] SUCCESS_RESPONSE = new byte[] {'d'};
+  static final byte[] SUCCESS_RESPONSE = new byte[]{'d'};
 
   // Update commands
   static final byte FREEZE_COMMAND = 'f';
@@ -29,8 +34,15 @@ final class UploaderCacheThread implements Runnable {
         + "." + Long.toString(System.currentTimeMillis(), 36);
   }
 
+  /**
+   * Because we can't interrupt the thread, this boolean is checked each loop.
+   */
+  AtomicBoolean CloseNow = new AtomicBoolean(false);
+
   private final ZContext context;
   private final String address;
+
+  private final HashSet<Pattern> ignoredPatterns = new HashSet<>();
 
   UploaderCacheThread(ZContext context, String address) {
     this.context = context;
@@ -41,20 +53,28 @@ final class UploaderCacheThread implements Runnable {
   public void run() {
     final ZMQ.Socket sock = context.createSocket(ZMQ.REP);
     try {
+      read();
+
+      final ZMQ.Poller poller = context.createPoller(1);
       sock.bind(address);
+      poller.register(sock);
 
       loop:
-      while (!Thread.interrupted()) {
+      while (!this.CloseNow.get()) {
+        poller.poll();
         final JSONObject msg = new JSONObject(String.valueOf(sock.recv()));
         switch (msg.getInt("c")) {
 
           case FREEZE_COMMAND:
+            write();
             break;
 
           case IGNORE_COMMAND:
+            write();
             break;
 
           case UPDATE_COMMAND:
+            write();
             break;
 
           case TERMINATE_COMMAND:
@@ -66,6 +86,7 @@ final class UploaderCacheThread implements Runnable {
             assert false;
         }
       }
+    } catch (Exception e) {
     } finally {
       context.destroySocket(sock);
       Logger.getLogger(UploaderCacheThread.class.getName()).log(

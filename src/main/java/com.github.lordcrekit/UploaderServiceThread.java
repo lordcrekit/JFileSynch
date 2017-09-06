@@ -10,11 +10,14 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
 class UploaderServiceThread implements Runnable {
   final static byte QUEUE_COMMAND = 'q';
   final static byte TERMINATE_COMMAND = 't';
+
+  AtomicBoolean CloseNow = new AtomicBoolean(false);
 
   private final ZContext context;
   private final String address;
@@ -37,10 +40,16 @@ class UploaderServiceThread implements Runnable {
     final ZMQ.Socket sock = context.createSocket(ZMQ.PULL);
     try {
       sock.bind(address);
+
+      final ZMQ.Poller poller = context.createPoller(1);
+      poller.register(sock);
+
       loop:
-      while (!Thread.interrupted()) {
+      while (!this.CloseNow.get()) {
+        poller.poll();
         final String msgStr = new String(sock.recv());
         final JSONObject msg = new JSONObject(msgStr);
+
         switch (msg.getInt("c")) {
           case QUEUE_COMMAND:
             final Path p = Paths.get(msg.getString("f"));
