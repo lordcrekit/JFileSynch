@@ -136,7 +136,7 @@ final class UploaderCacheThread implements Runnable {
 
   private final void write() throws IOException {
     try (final Reader rdr = Files.newBufferedReader(this.cacheFile)) {
-      final JSONObject store = new JSONObject();
+      final JSONObject store = new JSONObject(rdr);
       this.cache = new UploaderCache.CacheInfo();
     }
   }

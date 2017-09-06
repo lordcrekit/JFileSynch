@@ -14,7 +14,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
 class UploaderServiceThread implements Runnable {
-  final static byte[] SUCCESS_RESPONSE = new byte[]{'d'};
 
   final static byte QUEUE_COMMAND = 'q';
   final static byte TERMINATE_COMMAND = 't';

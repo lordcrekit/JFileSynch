@@ -64,16 +64,20 @@ public class UploaderCache implements Closeable {
      */
     final Map<Path, Long> timestampsWhenFrozen;
 
+    final Map<Path, Long> Timestamps;
+
     public CacheInfo() {
       this.ignoredPatterns = new HashSet<>();
       this.frozenPatterns = new HashMap<>();
       this.timestampsWhenFrozen = new HashMap<>();
+      this.Timestamps = new HashMap<>();
     }
 
     public CacheInfo(JSONObject json) {
       this.ignoredPatterns = new HashSet<>();
       this.frozenPatterns = new HashMap<>();
       this.timestampsWhenFrozen = new HashMap<>();
+      this.Timestamps = new HashMap<>();
     }
 
     public final JSONObject toJSON() {
@@ -88,7 +92,7 @@ public class UploaderCache implements Closeable {
   private final UploaderCacheThread threadService;
   private final Thread thread;
 
-  public UploaderCache(ZContext context, Path cacheFile) {
+  public UploaderCache(final ZContext context, final Path cacheFile) {
     this.context = context;
 
     this.threadAddress = UploaderService.makeAddress(UploaderCacheThread.class.getSimpleName());
@@ -106,7 +110,7 @@ public class UploaderCache implements Closeable {
    *     The time to freeze it at. This can be set to the future, if you know you're going to want to freeze at a
    *     certain time.
    */
-  public void freeze(Pattern pattern, long timestamp) {
+  public void freeze(final Pattern pattern, final long timestamp) {
     final ZMQ.Socket sock = this.context.createSocket(ZMQ.REQ);
     try {
       sock.connect(this.threadAddress);
@@ -128,7 +132,7 @@ public class UploaderCache implements Closeable {
    * @param pattern
    *     The pattern to ignore. Any files(resolved) that this pattern matches will not be uploaded.
    */
-  public void ignore(Pattern pattern) {
+  public void ignore(final Pattern pattern) {
     final ZMQ.Socket sock = this.context.createSocket(ZMQ.REQ);
     try {
       sock.connect(this.threadAddress);
@@ -150,7 +154,7 @@ public class UploaderCache implements Closeable {
    * @param file
    * @param timestamp
    */
-  public void update(Path file, long timestamp) {
+  public void update(final Path file, final long timestamp) {
     final ZMQ.Socket sock = this.context.createSocket(ZMQ.REQ);
     try {
       sock.connect(this.threadAddress);
@@ -171,7 +175,7 @@ public class UploaderCache implements Closeable {
    * @param p
    * @return
    */
-  public UploaderCache.FileInfo getFileInformation(Path p) {
+  public UploaderCache.FileInfo getFileInformation(final Path p) {
     final ZMQ.Socket sock = this.context.createSocket(ZMQ.REQ);
     try {
       sock.connect(this.threadAddress);
