@@ -35,17 +35,17 @@ public class UploaderCacheTest {
         cache.freeze(Pattern.compile(".*"), 50);
 
         // Make sure it was entered correctly.
-        final UploaderCache.CacheInfo info = cache.getCacheInformation();
-        Assert.assertTrue(info.frozenPatterns.containsKey(".*"));
-        Assert.assertEquals(1, info.frozenPatterns.size());
+        final UploaderCacheInformation info = cache.getCacheInformation();
+        Assert.assertTrue(info.FrozenPatterns.containsKey(".*"));
+        Assert.assertEquals(1, info.FrozenPatterns.size());
       }
 
       // Make sure it works after reloading the cache.
       try (final UploaderCache cache = new UploaderCache(CONTEXT, tempfile)) {
-        final UploaderCache.CacheInfo info = cache.getCacheInformation();
+        final UploaderCacheInformation info = cache.getCacheInformation();
 
-        Assert.assertTrue(info.frozenPatterns.containsKey(".*"));
-        Assert.assertEquals(1, info.frozenPatterns.size());
+        Assert.assertTrue(info.FrozenPatterns.containsKey(".*"));
+        Assert.assertEquals(1, info.FrozenPatterns.size());
       }
     } finally {
       Files.delete(tempfile);
@@ -65,17 +65,17 @@ public class UploaderCacheTest {
         cache.ignore(Pattern.compile(".*"));
 
         // Make sure it was entered correctly.
-        final UploaderCache.CacheInfo info = cache.getCacheInformation();
-        Assert.assertTrue(info.ignoredPatterns.contains(".*"));
-        Assert.assertEquals(1, info.ignoredPatterns.size());
+        final UploaderCacheInformation info = cache.getCacheInformation();
+        Assert.assertTrue(info.IgnoredPatterns.contains(".*"));
+        Assert.assertEquals(1, info.IgnoredPatterns.size());
       }
 
       // Make sure it works after reloading the cache.
       try (final UploaderCache cache = new UploaderCache(CONTEXT, tempfile)) {
-        final UploaderCache.CacheInfo info = cache.getCacheInformation();
+        final UploaderCacheInformation info = cache.getCacheInformation();
 
-        Assert.assertTrue(info.ignoredPatterns.contains(".*"));
-        Assert.assertEquals(1, info.ignoredPatterns.size());
+        Assert.assertTrue(info.IgnoredPatterns.contains(".*"));
+        Assert.assertEquals(1, info.IgnoredPatterns.size());
       }
     } finally {
       Files.delete(tempfile);
@@ -91,14 +91,14 @@ public class UploaderCacheTest {
         cache.update(tempUploadFile, 50);
 
         // Make sure it was entered correctly.
-        final UploaderCache.CacheInfo info = cache.getCacheInformation();
+        final UploaderCacheInformation info = cache.getCacheInformation();
         Assert.assertTrue(info.Timestamps.containsKey(tempUploadFile.toString()));
         Assert.assertEquals(1, info.Timestamps.size());
       }
 
       // Make sure it works after reloading the cache.
       try (final UploaderCache cache = new UploaderCache(CONTEXT, tempfile)) {
-        final UploaderCache.CacheInfo info = cache.getCacheInformation();
+        final UploaderCacheInformation info = cache.getCacheInformation();
 
         Assert.assertTrue(info.Timestamps.containsKey(tempUploadFile.toString()));
         Assert.assertEquals(1, info.Timestamps.size());

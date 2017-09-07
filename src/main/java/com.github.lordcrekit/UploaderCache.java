@@ -7,10 +7,6 @@ import org.zeromq.ZMQ;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -53,38 +49,7 @@ public class UploaderCache implements Closeable {
     // </editor-fold>
   }
 
-  static final class CacheInfo {
-    // <editor-fold defaultstate="collapsed">
-    final Set<Pattern> ignoredPatterns;
 
-    final Map<Pattern, Long> frozenPatterns;
-
-    /**
-     * The timestamp on a file when it was frozen.
-     */
-    final Map<Path, Long> timestampsWhenFrozen;
-
-    final Map<Path, Long> Timestamps;
-
-    public CacheInfo() {
-      this.ignoredPatterns = new HashSet<>();
-      this.frozenPatterns = new HashMap<>();
-      this.timestampsWhenFrozen = new HashMap<>();
-      this.Timestamps = new HashMap<>();
-    }
-
-    public CacheInfo(JSONObject json) {
-      this.ignoredPatterns = new HashSet<>();
-      this.frozenPatterns = new HashMap<>();
-      this.timestampsWhenFrozen = new HashMap<>();
-      this.Timestamps = new HashMap<>();
-    }
-
-    public final JSONObject toJSON() {
-      return new JSONObject();
-    }
-    // </editor-fold>
-  }
 
   private final ZContext context;
 
@@ -198,8 +163,23 @@ public class UploaderCache implements Closeable {
     }
   }
 
-  public UploaderCache.CacheInfo getCacheInformation() {
-    return new CacheInfo();
+  public UploaderCacheInformation getCacheInformation() {
+
+    final ZMQ.Socket sock = this.context.createSocket(ZMQ.REQ);
+    try {
+      sock.connect(this.threadAddress);
+
+      final JSONObject msg = new JSONObject();
+      msg.put("c", UploaderCacheThread.GET_CACHE_STATUS);
+      sock.send(msg.toString());
+
+      final byte[] res = sock.recv();
+      final JSONObject resObj = new JSONObject(res);
+      return new UploaderCacheInformation(resObj);
+
+    } finally {
+      this.context.destroySocket(sock);
+    }
   }
 
   @Override

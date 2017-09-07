@@ -6,6 +6,7 @@ import org.zeromq.ZMQ;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -37,7 +38,7 @@ final class UploaderCacheThread implements Runnable {
 
   private final Path cacheFile;
 
-  UploaderCache.CacheInfo cache;
+  UploaderCacheInformation cache;
 
   UploaderCacheThread(final ZContext context, final String address, final Path cacheFile) {
     this.context = context;
@@ -50,9 +51,12 @@ final class UploaderCacheThread implements Runnable {
   public void run() {
     final ZMQ.Socket sock = context.createSocket(ZMQ.REP);
     try {
-      read();
+      try {
+        read();
+      } catch (IOException e) {
+        assert false;
+      }
 
-      final ZMQ.Poller poller = context.createPoller(1);
       sock.bind(address);
 
       loop:
@@ -98,8 +102,8 @@ final class UploaderCacheThread implements Runnable {
             final JSONObject status = new JSONObject();
             status.put("i", isIgnored(path));
             status.put("f", isFrozen(path));
-            status.put("ft", this.cache.timestampsWhenFrozen.containsKey(path)
-                ? this.cache.timestampsWhenFrozen.get(path)
+            status.put("ft", this.cache.TimestampsWhenFrozen.containsKey(path)
+                ? this.cache.TimestampsWhenFrozen.get(path)
                 : "-1");
             status.put("t", 1); //this.timestamps.get(path));
 
@@ -107,7 +111,7 @@ final class UploaderCacheThread implements Runnable {
             break;
 
           case GET_CACHE_STATUS:
-            sock.send(SUCCESS_RESPONSE);
+            sock.send(this.cache.toJSON().toString());
             break;
 
           default:
@@ -130,14 +134,16 @@ final class UploaderCacheThread implements Runnable {
     return 50;
   }
 
-  private final void read() {
-    this.cache = new UploaderCache.CacheInfo();
+  private final void read() throws IOException {
+    try (final Reader rdr = Files.newBufferedReader(this.cacheFile)) {
+      final JSONObject obj = new JSONObject(rdr);
+      this.cache = new UploaderCacheInformation(obj);
+    }
   }
 
   private final void write() throws IOException {
-    try (final Reader rdr = Files.newBufferedReader(this.cacheFile)) {
-      final JSONObject store = new JSONObject(rdr);
-      this.cache = new UploaderCache.CacheInfo();
+    try (final Writer writer = Files.newBufferedWriter(this.cacheFile)) {
+      this.cache.toJSON().write(writer);
     }
   }
 }
