@@ -1,5 +1,7 @@
 package com.github.lordcrekit;
 
+import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -7,8 +9,10 @@ import org.junit.Test;
 import org.zeromq.ZContext;
 
 import java.io.IOException;
+import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.regex.Pattern;
 
 public class UploaderCacheTest {
@@ -26,6 +30,18 @@ public class UploaderCacheTest {
   }
 
   @Test
+  public void testXD() throws IOException {
+    final Path p = Paths.get("lol.json");
+    try (final UploaderCache cache = new UploaderCache(CONTEXT, p)) {
+      cache.freeze(Pattern.compile(".*"), 500);
+    }
+    try (final Reader r = Files.newBufferedReader(p)) {
+      JSONObject o = new JSONObject(new JSONTokener(r));
+      System.out.println(o.toString());
+    }
+  }
+
+  @Test
   public void testFreezeIO() throws IOException {
     System.out.println("Test freeze(PATH)");
 
@@ -36,16 +52,16 @@ public class UploaderCacheTest {
 
         // Make sure it was entered correctly.
         final UploaderCacheInformation info = cache.getCacheInformation();
-        Assert.assertTrue(info.FrozenPatterns.containsKey(".*"));
         Assert.assertEquals(1, info.FrozenPatterns.size());
+        Assert.assertEquals(".*", info.FrozenPatterns.keySet().iterator().next().pattern());
       }
 
       // Make sure it works after reloading the cache.
       try (final UploaderCache cache = new UploaderCache(CONTEXT, tempfile)) {
         final UploaderCacheInformation info = cache.getCacheInformation();
 
-        Assert.assertTrue(info.FrozenPatterns.containsKey(".*"));
         Assert.assertEquals(1, info.FrozenPatterns.size());
+        Assert.assertEquals(".*", info.FrozenPatterns.keySet().iterator().next().pattern());
       }
     } finally {
       Files.delete(tempfile);
@@ -54,7 +70,7 @@ public class UploaderCacheTest {
 
   @Test
   public void testTimestampWhenFrozenIO() {
-
+    Assert.fail("todo");
   }
 
   @Test
@@ -66,16 +82,16 @@ public class UploaderCacheTest {
 
         // Make sure it was entered correctly.
         final UploaderCacheInformation info = cache.getCacheInformation();
-        Assert.assertTrue(info.IgnoredPatterns.contains(".*"));
         Assert.assertEquals(1, info.IgnoredPatterns.size());
+        Assert.assertEquals(".*", info.IgnoredPatterns.iterator().next().pattern());
       }
 
       // Make sure it works after reloading the cache.
       try (final UploaderCache cache = new UploaderCache(CONTEXT, tempfile)) {
         final UploaderCacheInformation info = cache.getCacheInformation();
 
-        Assert.assertTrue(info.IgnoredPatterns.contains(".*"));
         Assert.assertEquals(1, info.IgnoredPatterns.size());
+        Assert.assertEquals(".*", info.IgnoredPatterns.iterator().next().pattern());
       }
     } finally {
       Files.delete(tempfile);
@@ -92,16 +108,16 @@ public class UploaderCacheTest {
 
         // Make sure it was entered correctly.
         final UploaderCacheInformation info = cache.getCacheInformation();
-        Assert.assertTrue(info.Timestamps.containsKey(tempUploadFile.toString()));
         Assert.assertEquals(1, info.Timestamps.size());
+        Assert.assertTrue(info.Timestamps.containsKey(tempUploadFile));
       }
 
       // Make sure it works after reloading the cache.
       try (final UploaderCache cache = new UploaderCache(CONTEXT, tempfile)) {
         final UploaderCacheInformation info = cache.getCacheInformation();
 
-        Assert.assertTrue(info.Timestamps.containsKey(tempUploadFile.toString()));
         Assert.assertEquals(1, info.Timestamps.size());
+        Assert.assertTrue(info.Timestamps.containsKey(tempUploadFile));
       }
     } finally {
       Files.delete(tempUploadFile);

@@ -1,6 +1,7 @@
 package com.github.lordcrekit;
 
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 
@@ -9,8 +10,10 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 final class UploaderCacheThread implements Runnable {
 
@@ -54,6 +57,7 @@ final class UploaderCacheThread implements Runnable {
       try {
         read();
       } catch (IOException e) {
+        e.printStackTrace();
         assert false;
       }
 
@@ -67,6 +71,9 @@ final class UploaderCacheThread implements Runnable {
 
           case FREEZE_COMMAND:
             try {
+              final String pattern = msg.getString("p");
+              final long timestamp = msg.getLong("t");
+              this.cache.FrozenPatterns.put(Pattern.compile(pattern), timestamp);
               write();
               sock.send(SUCCESS_RESPONSE);
             } catch (IOException e) {
@@ -76,6 +83,8 @@ final class UploaderCacheThread implements Runnable {
 
           case IGNORE_COMMAND:
             try {
+              final String pattern = msg.getString("p");
+              this.cache.IgnoredPatterns.add(Pattern.compile(pattern));
               write();
               sock.send(SUCCESS_RESPONSE);
             } catch (IOException e) {
@@ -85,6 +94,9 @@ final class UploaderCacheThread implements Runnable {
 
           case UPDATE_COMMAND:
             try {
+              final Path path = Paths.get(msg.getString("f"));
+              final long timestamp = msg.getLong("t");
+              this.cache.Timestamps.put(path, timestamp);
               write();
               sock.send(SUCCESS_RESPONSE);
             } catch (IOException e) {
@@ -135,10 +147,13 @@ final class UploaderCacheThread implements Runnable {
   }
 
   private final void read() throws IOException {
-    try (final Reader rdr = Files.newBufferedReader(this.cacheFile)) {
-      final JSONObject obj = new JSONObject(rdr);
-      this.cache = new UploaderCacheInformation(obj);
-    }
+    if (!Files.exists(this.cacheFile) || Files.size(this.cacheFile) == 0)
+      this.cache = new UploaderCacheInformation();
+    else
+      try (final Reader rdr = Files.newBufferedReader(this.cacheFile)) {
+        final JSONObject obj = new JSONObject(new JSONTokener(rdr));
+        this.cache = new UploaderCacheInformation(obj);
+      }
   }
 
   private final void write() throws IOException {

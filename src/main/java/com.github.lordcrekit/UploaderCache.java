@@ -49,14 +49,17 @@ public class UploaderCache implements Closeable {
     // </editor-fold>
   }
 
-
-
   private final ZContext context;
 
   private final String threadAddress;
   private final UploaderCacheThread threadService;
   private final Thread thread;
 
+  /**
+   *
+   * @param context
+   * @param cacheFile
+   */
   public UploaderCache(final ZContext context, final Path cacheFile) {
     this.context = context;
 
@@ -82,6 +85,7 @@ public class UploaderCache implements Closeable {
       final JSONObject msg = new JSONObject();
       msg.put("c", UploaderCacheThread.FREEZE_COMMAND);
       msg.put("p", pattern.toString());
+      msg.put("t", timestamp);
 
       sock.send(msg.toString());
       final byte[] code = sock.recv();
@@ -163,6 +167,11 @@ public class UploaderCache implements Closeable {
     }
   }
 
+  /**
+   * Get all the information currently stored in the entire UploaderCache.
+   *
+   * @return
+   */
   public UploaderCacheInformation getCacheInformation() {
 
     final ZMQ.Socket sock = this.context.createSocket(ZMQ.REQ);
@@ -174,7 +183,7 @@ public class UploaderCache implements Closeable {
       sock.send(msg.toString());
 
       final byte[] res = sock.recv();
-      final JSONObject resObj = new JSONObject(res);
+      final JSONObject resObj = new JSONObject(new String(res));
       return new UploaderCacheInformation(resObj);
 
     } finally {
