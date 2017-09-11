@@ -13,6 +13,7 @@ import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.FileTime;
 import java.util.regex.Pattern;
 
 public class UploaderCacheTest {
@@ -69,8 +70,35 @@ public class UploaderCacheTest {
   }
 
   @Test
-  public void testTimestampWhenFrozenIO() {
-    Assert.fail("todo");
+  public void testTimestampWhenFrozenIO() throws IOException {
+    final Path tempUploadFile = Files.createTempFile("", "");
+    final Path root = Files.createTempDirectory(UploaderCacheInformationTest.class.getName());
+    final Path tempfile = Files.createTempFile(root,"", ".freeze");
+    Files.setLastModifiedTime(tempfile, FileTime.fromMillis(50));
+    try {
+      try (final UploaderCache cache = new UploaderCache(CONTEXT, tempfile)) {
+        cache.freeze(Pattern.compile(".*\\.freeze"), 50);
+
+        // Make sure it was entered correctly.
+        final UploaderCacheInformation info = cache.getCacheInformation();
+        Assert.assertEquals(1, info.TimestampsWhenFrozen.size());
+        Assert.assertTrue(info.TimestampsWhenFrozen.containsKey(tempfile));
+        Assert.assertEquals(50, (long) info.TimestampsWhenFrozen.get(tempfile));
+      }
+
+      // Make sure it works after reloading the cache.
+      try (final UploaderCache cache = new UploaderCache(CONTEXT, tempfile)) {
+        final UploaderCacheInformation info = cache.getCacheInformation();
+
+        Assert.assertEquals(1, info.TimestampsWhenFrozen.size());
+        Assert.assertTrue(info.TimestampsWhenFrozen.containsKey(tempfile));
+        Assert.assertEquals(50, (long) info.TimestampsWhenFrozen.get(tempfile));
+      }
+    } finally {
+      Files.delete(tempUploadFile);
+      Files.delete(tempfile);
+      Files.delete(root);
+    }
   }
 
   @Test

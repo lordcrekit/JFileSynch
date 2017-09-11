@@ -74,6 +74,10 @@ class UploaderCacheInformation {
     }
   }
 
+  final void addFrozenTimestamps(final Path root, final Pattern pattern) {
+
+  }
+
   @Override
   public final boolean equals(Object o) {
     return o instanceof UploaderCacheInformation && equals((UploaderCacheInformation) o);
@@ -85,6 +89,7 @@ class UploaderCacheInformation {
         && this.TimestampsWhenFrozen.equals(o.TimestampsWhenFrozen)
         && this.Timestamps.equals(o.Timestamps);
   }
+
 
   public final JSONObject toJSON() {
     final JSONObject obj = new JSONObject();

@@ -4,14 +4,50 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.FileTime;
 import java.util.regex.Pattern;
 
 public class UploaderCacheInformationTest {
 
   @Test
+  public void testAddFrozenTimestamps() throws IOException {
+    System.out.println("Test addFrozenTimestamps()");
+
+    final Path root = Files.createTempDirectory(UploaderCacheInformation.class.getName());
+    final Path testFile1 = Files.createTempFile(root, "test", ".freeze");
+    final Path testFile2 = Files.createTempFile(root, "test", ".freeze");
+    final Path testFile3 = Files.createTempFile(root, "test", "don't");
+    try {
+      Files.setLastModifiedTime(testFile1, FileTime.fromMillis(50));
+      Files.setLastModifiedTime(testFile2, FileTime.fromMillis(60));
+      Files.setLastModifiedTime(testFile3, FileTime.fromMillis(70));
+
+      final UploaderCacheInformation info = new UploaderCacheInformation();
+      info.addFrozenTimestamps(root, Pattern.compile(".*\\.freeze"));
+
+      Assert.assertTrue(info.TimestampsWhenFrozen.containsKey(testFile1));
+      Assert.assertEquals(50, (long) info.TimestampsWhenFrozen.get(testFile1));
+
+      Assert.assertTrue(info.TimestampsWhenFrozen.containsKey(testFile2));
+      Assert.assertEquals(60, (long) info.TimestampsWhenFrozen.get(testFile1));
+
+      Assert.assertFalse(info.TimestampsWhenFrozen.containsKey(testFile3));
+
+    } finally {
+      Files.delete(testFile1);
+      Files.delete(testFile2);
+      Files.delete(testFile3);
+      Files.delete(root);
+    }
+  }
+
+  @Test
   public void testEquals() {
     System.out.println("Test equals(OBJECT)");
+
     final UploaderCacheInformation o1 = new UploaderCacheInformation();
     final UploaderCacheInformation o2 = new UploaderCacheInformation();
 
