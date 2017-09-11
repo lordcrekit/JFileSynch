@@ -3,9 +3,14 @@ package com.github.lordcrekit;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -74,8 +79,18 @@ class UploaderCacheInformation {
     }
   }
 
-  final void addFrozenTimestamps(final Path root, final Pattern pattern) {
-
+  final void addFrozenTimestamps(final Path root, final Pattern pattern) throws IOException {
+    Files.walk(root).forEach((Path p) -> {
+      final Matcher m = pattern.matcher(p.toString());
+      if (m.matches()) {
+        try {
+          TimestampsWhenFrozen.put(p, Files.getLastModifiedTime(p).toMillis());
+        } catch (IOException e) {
+          Logger.getLogger(UploaderCacheInformation.class.getName()).log(
+              Level.WARNING, "Failed to log date of frozen file " + p.toString(), e);
+        }
+      }
+    });
   }
 
   @Override

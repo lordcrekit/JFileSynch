@@ -78,12 +78,13 @@ public class UploaderCache implements Closeable {
    *     The time to freeze it at. This can be set to the future, if you know you're going to want to freeze at a
    *     certain time.
    */
-  public void freeze(final Pattern pattern, final long timestamp) {
+  public void freeze(final Path root, final Pattern pattern, final long timestamp) {
     final ZMQ.Socket sock = this.context.createSocket(ZMQ.REQ);
     try {
       sock.connect(this.threadAddress);
       final JSONObject msg = new JSONObject();
       msg.put("c", UploaderCacheThread.FREEZE_COMMAND);
+      msg.put("r", root.toString());
       msg.put("p", pattern.toString());
       msg.put("t", timestamp);
 

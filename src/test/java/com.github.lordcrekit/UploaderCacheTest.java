@@ -31,25 +31,14 @@ public class UploaderCacheTest {
   }
 
   @Test
-  public void testXD() throws IOException {
-    final Path p = Paths.get("lol.json");
-    try (final UploaderCache cache = new UploaderCache(CONTEXT, p)) {
-      cache.freeze(Pattern.compile(".*"), 500);
-    }
-    try (final Reader r = Files.newBufferedReader(p)) {
-      JSONObject o = new JSONObject(new JSONTokener(r));
-      System.out.println(o.toString());
-    }
-  }
-
-  @Test
   public void testFreezeIO() throws IOException {
     System.out.println("Test freeze(PATH)");
 
-    final Path tempfile = Files.createTempFile("", "");
+    final Path root = Files.createTempDirectory(UploaderCacheInformationTest.class.getName());
+    final Path tempFile = Files.createTempFile(root, "", "");
     try {
-      try (final UploaderCache cache = new UploaderCache(CONTEXT, tempfile)) {
-        cache.freeze(Pattern.compile(".*"), 50);
+      try (final UploaderCache cache = new UploaderCache(CONTEXT, tempFile)) {
+        cache.freeze(root, Pattern.compile(".*"), 50);
 
         // Make sure it was entered correctly.
         final UploaderCacheInformation info = cache.getCacheInformation();
@@ -58,14 +47,15 @@ public class UploaderCacheTest {
       }
 
       // Make sure it works after reloading the cache.
-      try (final UploaderCache cache = new UploaderCache(CONTEXT, tempfile)) {
+      try (final UploaderCache cache = new UploaderCache(CONTEXT, tempFile)) {
         final UploaderCacheInformation info = cache.getCacheInformation();
 
         Assert.assertEquals(1, info.FrozenPatterns.size());
         Assert.assertEquals(".*", info.FrozenPatterns.keySet().iterator().next().pattern());
       }
     } finally {
-      Files.delete(tempfile);
+      Files.delete(tempFile);
+      Files.delete(root);
     }
   }
 
@@ -73,30 +63,30 @@ public class UploaderCacheTest {
   public void testTimestampWhenFrozenIO() throws IOException {
     final Path tempUploadFile = Files.createTempFile("", "");
     final Path root = Files.createTempDirectory(UploaderCacheInformationTest.class.getName());
-    final Path tempfile = Files.createTempFile(root,"", ".freeze");
-    Files.setLastModifiedTime(tempfile, FileTime.fromMillis(50));
+    final Path tempFile = Files.createTempFile(root,"", ".freeze");
+    Files.setLastModifiedTime(tempFile, FileTime.fromMillis(50));
     try {
-      try (final UploaderCache cache = new UploaderCache(CONTEXT, tempfile)) {
-        cache.freeze(Pattern.compile(".*\\.freeze"), 50);
+      try (final UploaderCache cache = new UploaderCache(CONTEXT, tempFile)) {
+        cache.freeze(root, Pattern.compile(".*\\.freeze"), 50);
 
         // Make sure it was entered correctly.
         final UploaderCacheInformation info = cache.getCacheInformation();
         Assert.assertEquals(1, info.TimestampsWhenFrozen.size());
-        Assert.assertTrue(info.TimestampsWhenFrozen.containsKey(tempfile));
-        Assert.assertEquals(50, (long) info.TimestampsWhenFrozen.get(tempfile));
+        Assert.assertTrue(info.TimestampsWhenFrozen.containsKey(tempFile));
+        Assert.assertEquals(50, (long) info.TimestampsWhenFrozen.get(tempFile));
       }
 
       // Make sure it works after reloading the cache.
-      try (final UploaderCache cache = new UploaderCache(CONTEXT, tempfile)) {
+      try (final UploaderCache cache = new UploaderCache(CONTEXT, tempFile)) {
         final UploaderCacheInformation info = cache.getCacheInformation();
 
         Assert.assertEquals(1, info.TimestampsWhenFrozen.size());
-        Assert.assertTrue(info.TimestampsWhenFrozen.containsKey(tempfile));
-        Assert.assertEquals(50, (long) info.TimestampsWhenFrozen.get(tempfile));
+        Assert.assertTrue(info.TimestampsWhenFrozen.containsKey(tempFile));
+        Assert.assertEquals(50, (long) info.TimestampsWhenFrozen.get(tempFile));
       }
     } finally {
       Files.delete(tempUploadFile);
-      Files.delete(tempfile);
+      Files.delete(tempFile);
       Files.delete(root);
     }
   }

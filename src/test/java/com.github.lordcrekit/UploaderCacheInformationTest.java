@@ -32,7 +32,7 @@ public class UploaderCacheInformationTest {
       Assert.assertEquals(50, (long) info.TimestampsWhenFrozen.get(testFile1));
 
       Assert.assertTrue(info.TimestampsWhenFrozen.containsKey(testFile2));
-      Assert.assertEquals(60, (long) info.TimestampsWhenFrozen.get(testFile1));
+      Assert.assertEquals(60, (long) info.TimestampsWhenFrozen.get(testFile2));
 
       Assert.assertFalse(info.TimestampsWhenFrozen.containsKey(testFile3));
 

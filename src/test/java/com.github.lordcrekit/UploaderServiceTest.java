@@ -153,7 +153,7 @@ public class UploaderServiceTest {
       //Files.write(toUpload, "data".getBytes());
       //Files.setLastModifiedTime(toUpload, FileTime.fromMillis(50));
 
-      cache.freeze(Pattern.compile(".*\\.freeze.*"), 70);
+      //cache.freeze(Pattern.compile(".*\\.freeze.*"), 70);
 
       //Files.setLastModifiedTime(toUpload, FileTime.fromMillis(80));
       //service.queueUpload(toUpload);

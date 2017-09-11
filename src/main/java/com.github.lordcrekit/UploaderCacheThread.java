@@ -71,10 +71,15 @@ final class UploaderCacheThread implements Runnable {
 
           case FREEZE_COMMAND:
             try {
-              final String pattern = msg.getString("p");
+              final Path root = Paths.get(msg.getString("r"));
+              final Pattern pattern = Pattern.compile(msg.getString("p"));
               final long timestamp = msg.getLong("t");
-              this.cache.FrozenPatterns.put(Pattern.compile(pattern), timestamp);
+
+              this.cache.FrozenPatterns.put(pattern, timestamp);
+              this.cache.addFrozenTimestamps(root, pattern);
+
               write();
+
               sock.send(SUCCESS_RESPONSE);
             } catch (IOException e) {
               sock.send(FAILURE_RESPONSE);
