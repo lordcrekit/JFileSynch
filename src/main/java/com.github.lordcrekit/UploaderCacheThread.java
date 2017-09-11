@@ -116,15 +116,17 @@ final class UploaderCacheThread implements Runnable {
           case GET_FILE_STATUS:
             final String path = msg.getString("f");
 
-            final JSONObject status = new JSONObject();
-            status.put("i", isIgnored(path));
-            status.put("f", isFrozen(path));
-            status.put("ft", this.cache.TimestampsWhenFrozen.containsKey(path)
-                ? this.cache.TimestampsWhenFrozen.get(path)
-                : "-1");
-            status.put("t", 1); //this.timestamps.get(path));
-
-            sock.send(status.toString());
+            final UploaderCacheFileInfo info = new UploaderCacheFileInfo(
+                isIgnored(path),
+                isFrozen(path),
+                this.cache.TimestampsWhenFrozen.containsKey(path)
+                    ? this.cache.TimestampsWhenFrozen.get(path)
+                    : -1,
+                this.cache.Timestamps.containsKey(path)
+                    ? this.cache.Timestamps.get(path)
+                    :  -1
+            );
+            sock.send(info.toJSON().toString());
             break;
 
           case GET_CACHE_STATUS:

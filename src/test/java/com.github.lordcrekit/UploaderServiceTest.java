@@ -128,8 +128,8 @@ public class UploaderServiceTest {
 
       cache.ignore(Pattern.compile(".*\\.ignore.*"));
 
-      //Files.write(uploadFile, "data".getBytes());
-      //service.queueUpload(uploadFile);
+      Files.write(uploadFile, "data".getBytes());
+      service.queueUpload(uploadFile);
 
     } finally {
       Files.delete(cacheFile);
@@ -144,25 +144,30 @@ public class UploaderServiceTest {
     System.out.println("\tTest frozen files");
 
     final Path cacheFile = Files.createTempFile(TEST_DIRECTORY, "", "");
-    final Path toUpload = Files.createTempFile(TEST_DIRECTORY, ".freeze", "");
+
+    final Path root = Files.createTempDirectory(TEST_DIRECTORY, "testFrozenFiles");
+    final Path toUpload = Files.createTempFile(root, ".freeze", "");
 
     final TestingStrategy strategy = new TestingStrategy();
     try (final UploaderCache cache = new UploaderCache(CONTEXT, cacheFile);
          final UploaderService service = new UploaderService(CONTEXT, cache, new TestingRouter(), strategy)) {
 
-      //Files.write(toUpload, "data".getBytes());
-      //Files.setLastModifiedTime(toUpload, FileTime.fromMillis(50));
+      Files.write(toUpload, "data".getBytes());
+      Files.setLastModifiedTime(toUpload, FileTime.fromMillis(50));
+      service.queueUpload(toUpload);
 
-      //cache.freeze(Pattern.compile(".*\\.freeze.*"), 70);
+      //cache.freeze(root, Pattern.compile(".*\\.freeze.*"), 70);
 
-      //Files.setLastModifiedTime(toUpload, FileTime.fromMillis(80));
-      //service.queueUpload(toUpload);
+      Files.setLastModifiedTime(toUpload, FileTime.fromMillis(80));
+      service.queueUpload(toUpload);
 
     } finally {
       Files.delete(cacheFile);
       Files.delete(toUpload);
+      Files.delete(root);
     }
 
+    // It should have ignored the file since it was frozen appropriately.
     Assert.assertEquals(1, strategy.Count);
   }
 }

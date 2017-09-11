@@ -63,19 +63,31 @@ class UploaderServiceThread implements Runnable {
             if (!Files.exists(p))
               continue;
 
-            final UploaderCache.FileInfo info = this.cache.getFileInformation(p);
+            final UploaderCacheFileInfo info = this.cache.getFileInformation(p);
 
-            if (info.Ignored)
+            if (info.Ignored) {
               // Don't upload ignored files.
+              Logger.getLogger(UploaderServiceThread.class.getName()).log(
+                  UploaderService.BEHAVIOUR_LOGGING_LEVEL,
+                  "Not uploading " + p.getFileName() + " because it's ignored");
               continue;
+            }
 
-            if (info.TimeFrozen > 0 && info.TimestampWhenFrozen < 0)
+            if (info.TimeFrozen > 0 && info.TimestampWhenFrozen < 0) {
               // Don't upload it if it was frozen before being created.
+              System.out.println(info.toString());
+              Logger.getLogger(UploaderServiceThread.class.getName()).log(
+                  UploaderService.BEHAVIOUR_LOGGING_LEVEL,
+                  "Not uploading " + p.getFileName() + " because it was frozen before creation.");
               continue;
+            }
 
             if (info.TimeUploaded < 0) {
-              // It hasn't been uploaded before, we can safely upload it.
               try {
+                // It hasn't been uploaded before, we can safely upload it.
+                Logger.getLogger(UploaderServiceThread.class.getName()).log(
+                    UploaderService.BEHAVIOUR_LOGGING_LEVEL,
+                    "Uploading " + p.getFileName());
                 long newTime = this.strategy.upload(p, u);
                 this.cache.update(p, newTime);
               } catch (IOException e) {
@@ -88,6 +100,7 @@ class UploaderServiceThread implements Runnable {
             try {
               // Upload it if it not up to date.
               fileTimestamp = Files.getLastModifiedTime(p).toMillis();
+              assert false;
             } catch (IOException e) {
               e.printStackTrace();
               continue;

@@ -18,37 +18,6 @@ import java.util.regex.Pattern;
  */
 public class UploaderCache implements Closeable {
 
-  static final class FileInfo {
-    // <editor-fold defaultstate="collapsed">
-    /**
-     * If the file should be ignored.
-     */
-    final boolean Ignored;
-
-    /**
-     * The time that the file was frozen at, or <code>-1</code> if it is not frozen.
-     */
-    final long TimeFrozen;
-
-    /**
-     * The timestamp on the file when it was frozen. Will be <code>-1</code> if it was never frozen.
-     */
-    final long TimestampWhenFrozen;
-
-    /**
-     * The last Timestamp of the file when it was last uploaded, or <code>-1</code> if it was never uploaded.
-     */
-    final long TimeUploaded;
-
-    private FileInfo(boolean ignored, long timeFrozen, long timestampWhenFrozen, long timeUploaded) {
-      this.Ignored = ignored;
-      this.TimeFrozen = timeFrozen;
-      this.TimestampWhenFrozen = timestampWhenFrozen;
-      this.TimeUploaded = timeUploaded;
-    }
-    // </editor-fold>
-  }
-
   private final ZContext context;
 
   private final String threadAddress;
@@ -145,7 +114,7 @@ public class UploaderCache implements Closeable {
    * @param p
    * @return
    */
-  public UploaderCache.FileInfo getFileInformation(final Path p) {
+  public UploaderCacheFileInfo getFileInformation(final Path p) {
     final ZMQ.Socket sock = this.context.createSocket(ZMQ.REQ);
     try {
       sock.connect(this.threadAddress);
@@ -157,11 +126,7 @@ public class UploaderCache implements Closeable {
       final byte[] statusMsg_bytes = sock.recv();
 
       final JSONObject statusMsg = new JSONObject(new String(statusMsg_bytes));
-      return new UploaderCache.FileInfo(
-          statusMsg.getBoolean("i"),
-          statusMsg.getLong("f"),
-          statusMsg.getLong("ft"),
-          statusMsg.getLong("t"));
+      return new UploaderCacheFileInfo(statusMsg);
 
     } finally {
       this.context.destroySocket(sock);

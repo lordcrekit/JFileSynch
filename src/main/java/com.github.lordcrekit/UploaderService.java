@@ -24,6 +24,7 @@ import java.util.logging.Logger;
 public class UploaderService implements Closeable {
 
   final static Level SOCKET_LOGGING_LEVEL = Level.INFO;
+  final static Level BEHAVIOUR_LOGGING_LEVEL = Level.INFO;
 
   static String makeAddress(String prefix) {
     return "inproc://"
