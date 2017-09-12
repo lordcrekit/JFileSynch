@@ -4,6 +4,14 @@ import org.junit.Assert;
 import org.junit.Test;
 
 public class UploaderCacheFileInfoTest {
+
+  @Test
+  public void testCreation() {
+    System.out.println("Test constructor");
+
+
+  }
+
   @Test
   public void testEquals() {
     System.out.println("Test equals()");

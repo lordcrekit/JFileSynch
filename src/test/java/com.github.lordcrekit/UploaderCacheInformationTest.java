@@ -45,6 +45,22 @@ public class UploaderCacheInformationTest {
   }
 
   @Test
+  public void testIsIgnored() {
+    UploaderCacheInformation info = new UploaderCacheInformation();
+  }
+
+  @Test
+  public void testIsFrozen() {
+    UploaderCacheInformation info = new UploaderCacheInformation();
+    info.FrozenPatterns.put(Pattern.compile(".*\\.freeze50"), (long) 50);
+    info.FrozenPatterns.put(Pattern.compile(".*\\.freeze60"), (long) 60);
+
+    Assert.assertEquals((long) -1, info.isFrozen(Paths.get("lol/tmp/notfrozen")));
+    Assert.assertEquals((long) 50, info.isFrozen(Paths.get("lol/tmp/.freeze50")));
+    Assert.assertEquals((long) 60, info.isFrozen(Paths.get("lol/tmp/.freeze60")));
+  }
+
+  @Test
   public void testEquals() {
     System.out.println("Test equals(OBJECT)");
 

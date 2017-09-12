@@ -80,6 +80,10 @@ final class UploaderCacheThread implements Runnable {
 
               write();
 
+              Logger.getLogger(UploaderCacheThread.class.getName()).log(
+                  UploaderService.BEHAVIOUR_LOGGING_LEVEL,
+                  "Freeze of " + pattern.pattern() + " at " + timestamp);
+
               sock.send(SUCCESS_RESPONSE);
             } catch (IOException e) {
               sock.send(FAILURE_RESPONSE);
@@ -90,6 +94,11 @@ final class UploaderCacheThread implements Runnable {
             try {
               final String pattern = msg.getString("p");
               this.cache.IgnoredPatterns.add(Pattern.compile(pattern));
+
+              Logger.getLogger(UploaderCacheThread.class.getName()).log(
+                  UploaderService.BEHAVIOUR_LOGGING_LEVEL,
+                  "Ignore of " + pattern);
+
               write();
               sock.send(SUCCESS_RESPONSE);
             } catch (IOException e) {
@@ -102,40 +111,39 @@ final class UploaderCacheThread implements Runnable {
               final Path path = Paths.get(msg.getString("f"));
               final long timestamp = msg.getLong("t");
               this.cache.Timestamps.put(path, timestamp);
+
               write();
+
               sock.send(SUCCESS_RESPONSE);
             } catch (IOException e) {
               sock.send(FAILURE_RESPONSE);
             }
             break;
 
-          case TERMINATE_COMMAND:
+          case TERMINATE_COMMAND: {
             sock.send(SUCCESS_RESPONSE);
             break loop;
+          }
 
-          case GET_FILE_STATUS:
+          case GET_FILE_STATUS: {
             final String path = msg.getString("f");
 
-            final UploaderCacheFileInfo info = new UploaderCacheFileInfo(
-                isIgnored(path),
-                isFrozen(path),
-                this.cache.TimestampsWhenFrozen.containsKey(path)
-                    ? this.cache.TimestampsWhenFrozen.get(path)
-                    : -1,
-                this.cache.Timestamps.containsKey(path)
-                    ? this.cache.Timestamps.get(path)
-                    :  -1
-            );
+            final UploaderCacheFileInfo info = new UploaderCacheFileInfo(this.cache, Paths.get(path).normalize());
             sock.send(info.toJSON().toString());
             break;
+          }
 
-          case GET_CACHE_STATUS:
+          case GET_CACHE_STATUS: {
             sock.send(this.cache.toJSON().toString());
             break;
+          }
 
-          default:
+          // <editor-fold defaultstate="collapsed" desc="default">
+          default: {
             sock.send(FAILURE_RESPONSE);
             assert false;
+          }
+          // </editor-fold>
         }
       }
     } finally {

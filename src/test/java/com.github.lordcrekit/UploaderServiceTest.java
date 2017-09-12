@@ -66,7 +66,7 @@ public class UploaderServiceTest {
     public long upload(Path file, URI destination) throws IOException {
       // <editor-fold defaultstate="collapsed" desc="Simulate long upload">
       try {
-        Thread.sleep(TimeUnit.SECONDS.toMillis(1));
+        Thread.sleep(500);
       } catch (InterruptedException e) {
       }
       // </editor-fold>
@@ -95,20 +95,32 @@ public class UploaderServiceTest {
     final Path cacheFile = Files.createTempFile(TEST_DIRECTORY, "cache", ".json");
     final Path uploadPath = Files.createTempFile(TEST_DIRECTORY, "test", ".txt");
     final TestingStrategy strategy = new TestingStrategy();
-    try (final UploaderCache cache = new UploaderCache(CONTEXT, cacheFile);
-         final UploaderService service = new UploaderService(CONTEXT, cache, new TestingRouter(), strategy)) {
+    try (final UploaderCache cache = new UploaderCache(CONTEXT, cacheFile)) {
+      try (final UploaderService service = new UploaderService(CONTEXT, cache, new TestingRouter(), strategy)) {
 
-      Files.write(uploadPath, "data".getBytes());
-      for (int i = 2; i < 10; i++) {
-        Files.setLastModifiedTime(uploadPath, FileTime.fromMillis(i * 1000));
-        service.queueUpload(uploadPath);
-        Thread.sleep(TimeUnit.SECONDS.toMillis(1) / 20);
+        Files.write(uploadPath, "data".getBytes());
+        for (int i = 2; i < 20; i++) {
+          Files.setLastModifiedTime(uploadPath, FileTime.fromMillis(i * 1000));
+          service.queueUpload(uploadPath);
+          Thread.sleep(TimeUnit.SECONDS.toMillis(1) / 20);
+        }
+
+        service.terminate();
+        service.awaitTermination();
+
+      } catch (InterruptedException e) {
+        Assert.fail("Error in testing code. Should not have been interrupted.");
       }
 
-      Assert.assertEquals(2, strategy.Count); // It should have only needed to upload twice. Or once maybe.
+      // Make sure it uploaded to the most recent date.
+      Assert.assertEquals(
+          Files.getLastModifiedTime(uploadPath).toMillis(),
+          cache.getFileInformation(uploadPath).TimeUploaded);
 
-    } catch (InterruptedException e) {
-      Assert.fail("Error in testing code. Should not have been interrupted.");
+      // Make sure it didn't upload too many times
+      Assert.assertEquals(2, strategy.Count);
+
+
     } finally {
       Files.delete(cacheFile);
       Files.delete(uploadPath);
@@ -116,7 +128,7 @@ public class UploaderServiceTest {
   }
 
   @Test
-  public void testIgnoredFiles() throws IOException {
+  public void testIgnoredFiles() throws IOException, InterruptedException {
     System.out.println("\tTest ignored files");
 
     final Path cacheFile = Files.createTempFile(TEST_DIRECTORY, "", "");
@@ -131,6 +143,9 @@ public class UploaderServiceTest {
       Files.write(uploadFile, "data".getBytes());
       service.queueUpload(uploadFile);
 
+      service.terminate();
+      service.awaitTermination();
+
     } finally {
       Files.delete(cacheFile);
       Files.delete(uploadFile);
@@ -140,7 +155,7 @@ public class UploaderServiceTest {
   }
 
   @Test
-  public void testFrozenFiles() throws IOException {
+  public void testFrozenFiles() throws IOException, InterruptedException {
     System.out.println("\tTest frozen files");
 
     final Path cacheFile = Files.createTempFile(TEST_DIRECTORY, "", "");
@@ -156,10 +171,18 @@ public class UploaderServiceTest {
       Files.setLastModifiedTime(toUpload, FileTime.fromMillis(50));
       service.queueUpload(toUpload);
 
-      //cache.freeze(root, Pattern.compile(".*\\.freeze.*"), 70);
+      try {
+        Thread.sleep(1500);
+      } catch (InterruptedException e) {
+        Assert.fail(e.getMessage());
+      }
+      cache.freeze(root, Pattern.compile(".*\\.freeze.*"), 70);
 
       Files.setLastModifiedTime(toUpload, FileTime.fromMillis(80));
       service.queueUpload(toUpload);
+
+      service.terminate();
+      service.awaitTermination();
 
     } finally {
       Files.delete(cacheFile);
@@ -168,6 +191,113 @@ public class UploaderServiceTest {
     }
 
     // It should have ignored the file since it was frozen appropriately.
+    Assert.assertEquals(1, strategy.Count);
+  }
+
+  /**
+   * Frozen files should still be uploaded if they are not up to date.
+   *
+   * @throws IOException
+   */
+  @Test
+  public void testFrozenBackup() throws IOException, InterruptedException {
+    System.out.println("\tTest frozen files");
+
+    final Path cacheFile = Files.createTempFile(TEST_DIRECTORY, "", "");
+
+    final Path root = Files.createTempDirectory(TEST_DIRECTORY, "testFrozenFiles");
+    final Path toUpload = Files.createTempFile(root, ".freeze", "");
+
+    final TestingStrategy strategy = new TestingStrategy();
+    try (final UploaderCache cache = new UploaderCache(CONTEXT, cacheFile);
+         final UploaderService service = new UploaderService(CONTEXT, cache, new TestingRouter(), strategy)) {
+
+      Files.setLastModifiedTime(toUpload, FileTime.fromMillis(40));
+      service.queueUpload(toUpload);
+
+      Thread.sleep(700);
+      Files.setLastModifiedTime(toUpload, FileTime.fromMillis(50));
+      cache.freeze(root, Pattern.compile(".*\\.freeze"), 60);
+
+      Thread.sleep(700);
+      service.queueUpload(toUpload);
+
+      service.terminate();
+      service.awaitTermination();
+
+    } finally {
+      Files.delete(toUpload);
+      Files.delete(cacheFile);
+      Files.delete(root);
+    }
+
+    Assert.assertEquals(2, strategy.Count);
+  }
+
+  @Test
+  public void testFrozenBeforeCreation() throws IOException, InterruptedException {
+    final Path cacheFile = Files.createTempFile(TEST_DIRECTORY, "", "");
+
+    final Path root = Files.createTempDirectory(TEST_DIRECTORY, "testFrozenFiles");
+    Path toUpload = null;
+
+    final TestingStrategy strategy = new TestingStrategy();
+    try (final UploaderCache cache = new UploaderCache(CONTEXT, cacheFile);
+         final UploaderService service = new UploaderService(CONTEXT, cache, new TestingRouter(), strategy)) {
+
+
+      cache.freeze(root, Pattern.compile(".*\\.freeze"), 50);
+
+      toUpload = Files.createTempFile(root, "after", ".freeze");
+      Files.setLastModifiedTime(toUpload, FileTime.fromMillis(60));
+
+      Thread.sleep(500);
+      service.queueUpload(toUpload);
+
+      service.terminate();
+      service.awaitTermination();
+
+    } finally {
+      if (toUpload != null)
+        Files.delete(toUpload);
+      Files.delete(cacheFile);
+      Files.delete(root);
+    }
+
+    Assert.assertEquals(0, strategy.Count);
+  }
+
+  /**
+   * If a file is frozen, has never been uploaded, but it's date is younger than the freeze date, it should still be
+   * uploaded.
+   *
+   * @throws IOException
+   */
+  @Test
+  public void testFrozenBeforeCreationBackup() throws IOException, InterruptedException {
+    final Path cacheFile = Files.createTempFile(TEST_DIRECTORY, "", "");
+
+    final Path root = Files.createTempDirectory(TEST_DIRECTORY, "testFrozenFiles");
+    final Path toUpload = Files.createTempFile(root, ".freeze", "");
+
+    final TestingStrategy strategy = new TestingStrategy();
+    try (final UploaderCache cache = new UploaderCache(CONTEXT, cacheFile);
+         final UploaderService service = new UploaderService(CONTEXT, cache, new TestingRouter(), strategy)) {
+
+      Files.write(toUpload, "data".getBytes());
+      Files.setLastModifiedTime(toUpload, FileTime.fromMillis(50));
+      cache.freeze(root, Pattern.compile(".*\\.freeze"), 60);
+      service.queueUpload(toUpload);
+
+      service.terminate();
+      service.awaitTermination();
+
+    } finally {
+      Files.delete(toUpload);
+      Files.delete(cacheFile);
+      Files.delete(root);
+    }
+
     Assert.assertEquals(1, strategy.Count);
   }
 }

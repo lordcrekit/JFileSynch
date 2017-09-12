@@ -64,7 +64,7 @@ class UploaderCacheInformation {
 
     this.TimestampsWhenFrozen = new HashMap<>();
     final JSONObject frozenTimeObj = json.has("ft") ? json.getJSONObject("ft") : new JSONObject();
-    for (Iterator<String> key = frozenTimeObj.keys(); key.hasNext();) {
+    for (Iterator<String> key = frozenTimeObj.keys(); key.hasNext(); ) {
       final String p = key.next();
       final long t = frozenTimeObj.getLong(p);
       this.TimestampsWhenFrozen.put(Paths.get(p), t);
@@ -72,13 +72,19 @@ class UploaderCacheInformation {
 
     this.Timestamps = new HashMap<>();
     final JSONObject timeObj = json.has("t") ? json.getJSONObject("t") : new JSONObject();
-    for (Iterator<String> key = timeObj.keys(); key.hasNext();) {
+    for (Iterator<String> key = timeObj.keys(); key.hasNext(); ) {
       final String p = key.next();
       final long t = timeObj.getLong(p);
       this.Timestamps.put(Paths.get(p), t);
     }
   }
 
+  /**
+   *
+   * @param root
+   * @param pattern
+   * @throws IOException
+   */
   final void addFrozenTimestamps(final Path root, final Pattern pattern) throws IOException {
     Files.walk(root).forEach((Path p) -> {
       final Matcher m = pattern.matcher(p.toString());
@@ -93,6 +99,35 @@ class UploaderCacheInformation {
     });
   }
 
+  /**
+   *
+   * @param path
+   * @return
+   */
+  final boolean isIgnored(Path path) {
+    for (Pattern pattern : this.IgnoredPatterns) {
+      final Matcher m = pattern.matcher(path.toString());
+      if (m.matches())
+        return true;
+    }
+    return false;
+  }
+
+  /**
+   *
+   * @param path
+   * @return
+   */
+  final long isFrozen(Path path) {
+    for (Map.Entry<Pattern, Long> e : this.FrozenPatterns.entrySet()) {
+      final Matcher m = e.getKey().matcher(path.toString());
+      if (m.matches())
+        return e.getValue();
+    }
+    return -1;
+  }
+
+  // <editor-fold defaultstate="collapsed" desc="Equality checking">
   @Override
   public final boolean equals(Object o) {
     return o instanceof UploaderCacheInformation && equals((UploaderCacheInformation) o);
@@ -104,8 +139,9 @@ class UploaderCacheInformation {
         && this.TimestampsWhenFrozen.equals(o.TimestampsWhenFrozen)
         && this.Timestamps.equals(o.Timestamps);
   }
+  // </editor-fold>
 
-
+  // <editor-fold defaultstate="collapsed" desc="Conversions">
   public final JSONObject toJSON() {
     final JSONObject obj = new JSONObject();
     {
@@ -139,7 +175,9 @@ class UploaderCacheInformation {
   public final String toString() {
     return this.toJSON().toString();
   }
+  // </editor-fold>
 
+  // <editor-fold defaultstate="collapsed" desc="Private stuff">
   private static final boolean comparePatternList(List<Pattern> o1, List<Pattern> o2) {
     if (o1.size() != o2.size())
       return false;
@@ -176,4 +214,5 @@ class UploaderCacheInformation {
     return true;
 
   }
+  // </editor-fold>
 }

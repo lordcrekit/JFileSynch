@@ -2,6 +2,8 @@ package com.github.lordcrekit;
 
 import org.json.JSONObject;
 
+import java.nio.file.Path;
+
 final class UploaderCacheFileInfo {
 
   /**
@@ -24,14 +26,28 @@ final class UploaderCacheFileInfo {
    */
   final long TimeUploaded;
 
-  UploaderCacheFileInfo(boolean ignored, long timeFrozen, long timestampWhenFrozen, long timeUploaded) {
+  UploaderCacheFileInfo(
+      final boolean ignored,
+      final long timeFrozen,
+      final long timestampWhenFrozen,
+      final long timeUploaded) {
+
     this.Ignored = ignored;
     this.TimeFrozen = timeFrozen;
     this.TimestampWhenFrozen = timestampWhenFrozen;
     this.TimeUploaded = timeUploaded;
   }
 
-  UploaderCacheFileInfo(JSONObject json) {
+  UploaderCacheFileInfo(final UploaderCacheInformation cache, final Path path) {
+    this.Ignored = cache.isIgnored(path);
+    this.TimeFrozen = cache.isFrozen(path);
+    this.TimestampWhenFrozen = cache.TimestampsWhenFrozen.containsKey(path)
+        ? cache.TimestampsWhenFrozen.get(path) : -1;
+    this.TimeUploaded = cache.Timestamps.containsKey(path)
+        ? cache.Timestamps.get(path) : -1;
+  }
+
+  UploaderCacheFileInfo(final JSONObject json) {
     this.Ignored = json.has("i")
         ? json.getBoolean("i")
         : false;
@@ -61,11 +77,11 @@ final class UploaderCacheFileInfo {
   }
 
   @Override
-  public boolean equals(Object o) {
+  public boolean equals(final Object o) {
     return o instanceof UploaderCacheFileInfo && this.equals((UploaderCacheFileInfo) o);
   }
 
-  public boolean equals(UploaderCacheFileInfo o) {
+  public boolean equals(final UploaderCacheFileInfo o) {
     return this.Ignored == o.Ignored
         && this.TimeFrozen == o.TimeFrozen
         && this.TimestampWhenFrozen == o.TimestampWhenFrozen
